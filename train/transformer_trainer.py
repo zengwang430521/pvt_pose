@@ -40,9 +40,9 @@ class TransformerTrainer(BaseTrainer):
     def init_fn(self):
         model_class = model_dict[self.options.model]
         if 'pvt' in self.options.model:
-            self.TNet = model_dict[self.options.model]().to(self.device)
+            self.TNet = model_class.to(self.device)
         else:
-            self.TNet = model_dict[self.options.model](self.options).to(self.device)
+            self.TNet = model_class(self.options).to(self.device)
 
         # create training dataset
         self.train_ds = create_dataset(self.options.dataset, self.options, use_IUV=False)
@@ -69,7 +69,11 @@ class TransformerTrainer(BaseTrainer):
 
         # LSP indices from full list of keypoints
         self.to_lsp = list(range(14))
-        self.renderer = Renderer(faces=self.smpl.faces.cpu().numpy())
+        if self.options.use_renderer:
+            self.renderer = Renderer(faces=self.smpl.faces.cpu().numpy())
+        else:
+            self.renderer = None
+
 
         # Optionally start training from a pretrained checkpoint
         # Note that this is different from resuming training
@@ -284,42 +288,18 @@ class TransformerTrainer(BaseTrainer):
                                                 pred_keypoints_2d_, cam, self.renderer)
             rend_img = rend_img.transpose(2, 0, 1)
 
-            if 'gt_vert' in self.vis_data.keys():
+            if 'gt_vert' in self.vis_data.keys() and self.renderer is not None:
                 rend_img2 = vis_mesh(img, self.vis_data['gt_vert'][i].cpu().numpy(), cam, self.renderer, color='blue')
                 rend_img2 = rend_img2.transpose(2, 0, 1)
                 rend_img = np.concatenate((rend_img, rend_img2), axis=2)
 
-            # gt_dp = self.vis_data['gt_dp'][i]
-            # gt_dp = torch.nn.functional.interpolate(gt_dp[None, :], size=[H, W])[0]
-            # gt_dp = gt_dp.cpu().numpy()
-            # # gt_dp = torch.cat((gt_dp, gt_dp.new_ones(1, H, W)), dim=0).cpu().numpy()
-            # rend_img = np.concatenate((rend_img, gt_dp), axis=2)
-            #
-            # pred_dp = self.vis_data['pred_dp'][i]
-            # pred_dp[0] = (pred_dp[0] > 0.5).type(dtype)
-            # pred_dp[1:] = pred_dp[1:] * pred_dp[0]
-            # pred_dp = torch.nn.functional.interpolate(pred_dp[None, :], size=[H, W])[0]
-            # pred_dp = pred_dp.cpu().numpy()
-            # rend_img = np.concatenate((rend_img, pred_dp), axis=2)
-
-            # import matplotlib.pyplot as plt
-            # plt.imshow(rend_img.transpose([1, 2, 0]))
             rend_imgs.append(torch.from_numpy(rend_img))
 
         rend_imgs = make_grid(rend_imgs, nrow=1)
 
-        # uv_maps = []
-        # for i in range(vis_size):
-        #     uv_temp = torch.cat((self.vis_data['pred_uv'][i], self.vis_data['gt_uv'][i]), dim=1)
-        #     uv_maps.append(uv_temp.permute(2, 0, 1))
-        #
-        # uv_maps = make_grid(uv_maps, nrow=1)
-        # uv_maps = uv_maps.abs()
-        # uv_maps = uv_maps / uv_maps.max()
-
         # Save results in Tensorboard
         self.summary_writer.add_image('imgs', rend_imgs, self.step_count)
-        # self.summary_writer.add_image('uv_maps', uv_maps, self.step_count)
+
 
         for key in self.loss_item.keys():
             self.summary_writer.add_scalar('loss_' + key, self.loss_item[key], self.step_count)

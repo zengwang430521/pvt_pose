@@ -11,3 +11,7 @@ python train.py --name=tran3 --dataset=mesh --batch_size=128 --ngpu=8 --num_work
 
 python train.py --name=tran4 --dataset=mesh --batch_size=128 --ngpu=8 --num_workers=16 --num_epochs=50 --enc_layers=0
 --checkpoint_steps=20000 --use_inter --pose_head=specific
+
+
+srun -p pat_earth --gres=gpu:8 -n1 --ntasks-per-node=1 --job-name=eval --kill-on-bad-exit=1
+python train.py --name=pvt --dataset=mesh --batch_size=128 --ngpu=8 --num_workers=16 --num_epochs=50 --checkpoint_steps=20000 --model=pvt_tiny

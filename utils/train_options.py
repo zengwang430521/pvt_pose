@@ -80,6 +80,9 @@ class TrainOptions(object):
         parser.add_argument('--masks', action='store_true',
                             help="Train segmentation head if the flag is provided")
 
+        parser.add_argument('--use_renderer', action='store_true')
+
+
 
 
 
@@ -126,12 +129,7 @@ class TrainOptions(object):
         optim.add_argument('--adam_beta1', type=float, default=0.9, help='Value for Adam Beta 1')
         optim.add_argument("--lr", type=float, default=2.5e-4, help="Learning rate")
         optim.add_argument("--wd", type=float, default=0, help="Weight decay weight")
-        optim.add_argument("--lam_tv", type=float, default=1e-4, help='lambda of tv loss')
-        optim.add_argument("--lam_con", type=float, default=1, help='lambda of consistent loss')
-        optim.add_argument("--lam_dp_mask", type=float, default=0.2, help='lambda of densepose mask loss')
-        optim.add_argument("--lam_dp_uv", type=float, default=1, help='lambda of densepose uv loss')
         optim.add_argument("--lam_mesh", type=float, default=1, help='lambda of mesh loss')
-        optim.add_argument("--lam_uv", type=float, default=1, help='lambda of location map loss')
         optim.add_argument("--lam_key2d", type=float, default=1, help='lambda of 2D joint loss')
         optim.add_argument("--lam_key3d", type=float, default=1, help='lambda of 3D joint loss')
 

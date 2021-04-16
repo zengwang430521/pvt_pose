@@ -218,19 +218,24 @@ def visualize_reconstruction(img, img_size, gt_kp, vertices, pred_kp, camera, re
     # Fix a flength so i can render this with persp correct scale
     res = img.shape[1]
     camera_t = np.array([camera[1], camera[2], 2*focal_length/(res * camera[0] +1e-9)])
-    rend_img = renderer.render(vertices, camera_t=camera_t,
-                               img=img, use_bg=True,
-                               focal_length=focal_length,
-                               body_color=color)
-    rend_img = draw_text(rend_img, debug_text)
+
+    if renderer is None:
+        rend_img = renderer.render(vertices, camera_t=camera_t,
+                                   img=img, use_bg=True,
+                                   focal_length=focal_length,
+                                   body_color=color)
+        rend_img = draw_text(rend_img, debug_text)
 
     # Draw skeleton
     gt_joint = ((gt_kp[:, :2] + 1) * 0.5) * img_size
     pred_joint = ((pred_kp + 1) * 0.5) * img_size
-    img_with_gt = draw_skeleton( img, gt_joint, draw_edges=False, vis=gt_vis)
+    img_with_gt = draw_skeleton(img, gt_joint, draw_edges=False, vis=gt_vis)
     skel_img = draw_skeleton(img_with_gt, pred_joint)
 
-    combined = np.hstack([skel_img, rend_img])
+    if renderer is None:
+        combined = skel_img
+    else:
+        combined = np.hstack([skel_img, rend_img])
 
     return combined
 
