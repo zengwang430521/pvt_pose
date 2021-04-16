@@ -1,0 +1,10 @@
+chumpy
+neural_renderer_pytorch
+tqdm
+numpy
+opendr
+opencv_python
+h5py
+scipy
+ipdb
+tensorboardX
