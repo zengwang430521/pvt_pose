@@ -302,7 +302,6 @@ class TransformerTrainer(BaseTrainer):
         # Save results in Tensorboard
         self.summary_writer.add_image('imgs', rend_imgs, self.step_count)
 
-
         for key in self.loss_item.keys():
             self.summary_writer.add_scalar('loss_' + key, self.loss_item[key], self.step_count)
 
