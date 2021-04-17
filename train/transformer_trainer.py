@@ -132,7 +132,7 @@ class TransformerTrainer(BaseTrainer):
                 gt_vertices[gender == 1] = self.female_smpl(gt_pose[gender == 1], gt_betas[gender == 1])
             pred_para = self.TNet(images)
 
-        if 'pvt' in self.options.model:
+        if pred_para[-1].dim() == 2:
             pred_para = (p.unsqueeze(1) for p in pred_para)
         pred_pose, pred_shape, pred_camera = pred_para
         bs, s,  _ = pred_shape.shape
@@ -264,6 +264,9 @@ class TransformerTrainer(BaseTrainer):
 
     def train_summaries(self, batch, epoch):
         """Tensorboard logging."""
+        for key in self.loss_item.keys():
+            self.summary_writer.add_scalar('loss_' + key, self.loss_item[key], self.step_count)
+
         gt_keypoints_2d = self.vis_data['gt_joint'].cpu().numpy()
         pred_vertices = self.vis_data['pred_vert']
         pred_keypoints_2d = self.vis_data['pred_joint']
@@ -288,7 +291,7 @@ class TransformerTrainer(BaseTrainer):
                                                     pred_keypoints_2d_, cam, self.renderer)
                 rend_img = rend_img.transpose(2, 0, 1)
 
-                if 'gt_vert' in self.vis_data.keys() and self.renderer is not None:
+                if 'gt_vert' in self.vis_data.keys():
                     rend_img2 = vis_mesh(img, self.vis_data['gt_vert'][i].cpu().numpy(), cam, self.renderer, color='blue')
                     rend_img2 = rend_img2.transpose(2, 0, 1)
                     rend_img = np.concatenate((rend_img, rend_img2), axis=2)
@@ -296,16 +299,52 @@ class TransformerTrainer(BaseTrainer):
             else:
                 rend_img = visualize_vert(img, self.options.img_res, gt_keypoints_2d_, vertices,
                                           pred_keypoints_2d_, cam, self.renderer)
+                rend_img = rend_img.transpose(2, 0, 1)
 
             rend_imgs.append(torch.from_numpy(rend_img))
-
         rend_imgs = make_grid(rend_imgs, nrow=1)
-
         # Save results in Tensorboard
         self.summary_writer.add_image('imgs', rend_imgs, self.step_count)
 
-        for key in self.loss_item.keys():
-            self.summary_writer.add_scalar('loss_' + key, self.loss_item[key], self.step_count)
+        if 'gt_vert' in self.vis_data.keys():
+            vert_image = self.vis_data['image'].float().clone()
+            vis_res = self.options.img_res
+
+            pred_vertices = self.vis_data['pred_vert'].detach().clone()
+            vert_2d = orthographic_projection(pred_vertices, pred_camera)
+            index_batch = torch.arange(vert_2d.shape[0]).unsqueeze(1).expand([-1, vert_2d.shape[1]])
+            index_batch = index_batch.reshape(-1, 1)
+            vert_2d = vert_2d.reshape(-1, 2)
+            valid = (vert_2d[:, 0] >= -1) * (vert_2d[:, 0] <= 1) * (vert_2d[:, 1] >= -1) * (vert_2d[:, 1] <= 1)
+            vert_2d = vert_2d[valid, :]
+            index_batch = index_batch[valid]
+            vert_2d = 0.5 * (vert_2d + 1) * (vis_res - 1)
+            vert_2d = vert_2d.long().clamp(min=0, max=vis_res - 1)
+            vert_image[index_batch, :, vert_2d[:, 1], vert_2d[:, 0]] = 0.5
+
+            vert_image_gt = self.vis_data['image'].float().clone()
+            gt_vertices = self.vis_data['gt_vert'].detach().clone()
+            vert_2d = orthographic_projection(gt_vertices, pred_camera)
+            index_batch = torch.arange(vert_2d.shape[0]).unsqueeze(1).expand([-1, vert_2d.shape[1]])
+            index_batch = index_batch.reshape(-1, 1)
+            vert_2d = vert_2d.reshape(-1, 2)
+            valid = (vert_2d[:, 0] >= -1) * (vert_2d[:, 0] <= 1) * (vert_2d[:, 1] >= -1) * (vert_2d[:, 1] <= 1)
+            vert_2d = vert_2d[valid, :]
+            index_batch = index_batch[valid]
+            vert_2d = 0.5 * (vert_2d + 1) * (vis_size - 1)
+            vert_2d = vert_2d.long().clamp(min=0, max=vis_size - 1)
+            vert_image_gt[index_batch, :, vert_2d[:, 1], vert_2d[:, 0]] = 0.5
+
+            vert_image = torch.cat([vert_image_gt, vert_image], dim=-1)
+            vert_image = make_grid(vert_image, nrow=1)
+            self.summary_writer.add_image('vert', rend_imgs, self.step_count)
+
+        # import matplotlib.pyplot as plt
+        # plt.imshow(rend_imgs.permute(1, 2, 0).cpu().numpy())
+        # plt.imshow(vert_image.permute(1, 2, 0).cpu().numpy())
+
+
+
 
     def train(self):
         """Training process."""

@@ -251,7 +251,7 @@ class BaseDataset(Dataset):
         # Load image
         imgname = join(self.img_dir, str(self.imgname[index]))
         try:
-            img = cv2.imread(imgname)[:,:,::-1].copy().astype(np.float32)
+            img = cv2.imread(imgname)[:, :, ::-1].copy().astype(np.float32)
         except TypeError:
             print(imgname)
         orig_shape = np.array(img.shape)[:2]
