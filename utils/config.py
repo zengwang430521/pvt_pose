@@ -8,10 +8,6 @@ Things you need to change: *_ROOT that indicate the path to each dataset
 from os.path import join
 from os.path import expanduser
 
-home = expanduser("~")
-if 'lmxu' in home:
-    home = join(home, 'zwang')
-
 H36M_ROOT = 'data/datasets/h36m'
 H36M_ROOT_ORIGIN = 'data/datasets/h36m_test'
 
@@ -27,7 +23,8 @@ MPI_INF_3DHP_ROOT = 'data/datasets/mpi_inf_3dhp'
 LSPET_ROOT = 'data/datasets/hr-lspet'
 
 # Output folder to save test/train npz files
-DATASET_NPZ_PATH = join(home, 'data/datasets/npz')
+DATASET_NPZ_PATH = 'data/datasets/npz'
+
 
 # Path to test/train npz files
 DATASET_FILES = [ {'h36m-p1': join(DATASET_NPZ_PATH, 'h36m_valid_protocol1.npz'),
