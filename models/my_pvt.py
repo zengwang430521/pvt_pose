@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from functools import partial
 
-from pvt import Mlp, Attention, PatchEmbed, Block
+from .pvt import Mlp, Attention, PatchEmbed, Block
 from models.pvt_utils.layers import DropPath, to_2tuple, trunc_normal_
 from models.pvt_utils.registry import register_model
 from models.pvt_utils.cfg import _cfg

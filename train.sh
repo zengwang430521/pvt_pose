@@ -19,4 +19,4 @@ python train.py --dataset=mesh --batch_size=256 --ngpu=8 --num_workers=16 --num_
 
 srun -p pat_earth --gres=gpu:8 -n1 --ntasks-per-node=1 --job-name=eval --kill-on-bad-exit=1
 python train.py --dataset=mesh --batch_size=256 --ngpu=8 --num_workers=16 --num_epochs=50 --checkpoint_steps=10000
---name=pvt_medium --model=pvt_medium
+--name=mypvt_medium --model=mypvt_medium
