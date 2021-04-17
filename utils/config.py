@@ -83,9 +83,13 @@ DATASET_FOLDERS = {'h36m-train': H36M_ROOT,
 CUBE_PARTS_FILE = 'data/cube_parts.npy'
 JOINT_REGRESSOR_TRAIN_EXTRA = 'data/J_regressor_extra.npy'
 VERTEX_TEXTURE_FILE = 'data/vertex_texture.npy'
-SMPL_FILE = 'data/basicModel_neutral_lbs_10_207_0_v1.0.0.pkl'
-MALE_SMPL_FILE = 'data/basicmodel_m_lbs_10_207_0_v1.0.0.pkl'
-FEMALE_SMPL_FILE = 'data/basicModel_f_lbs_10_207_0_v1.0.0.pkl'
+# SMPL_FILE = 'data/basicModel_neutral_lbs_10_207_0_v1.0.0.pkl'
+# MALE_SMPL_FILE = 'data/basicmodel_m_lbs_10_207_0_v1.0.0.pkl'
+# FEMALE_SMPL_FILE = 'data/basicModel_f_lbs_10_207_0_v1.0.0.pkl'
+SMPL_FILE = 'data/smpl/SMPL_NEUTRAL.pkl'
+MALE_SMPL_FILE = 'data/smpl/SMPL_MALE.pkl'
+FEMALE_SMPL_FILE = 'data/smpl/SMPL_FEMALE.pkl'
+
 
 JOINT_REGRESSOR_H36M = 'data/J_regressor_h36m.npy'
 LSP_REGRESSOR_EVAL = 'data/smpl2lsp_j_regressor_nt_v2.npy'
