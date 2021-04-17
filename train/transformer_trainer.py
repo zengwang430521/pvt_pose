@@ -36,7 +36,7 @@ class TransformerTrainer(BaseTrainer):
     def init_fn(self):
         model_class = model_dict[self.options.model]
         if 'pvt' in self.options.model:
-            self.TNet = model_class.to(self.device)
+            self.TNet = model_class().to(self.device)
         else:
             self.TNet = model_class(self.options).to(self.device)
 
