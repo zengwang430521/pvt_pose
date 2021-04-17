@@ -12,20 +12,16 @@ from torchvision.utils import make_grid
 from train.base_trainer import BaseTrainer
 from datasets import create_dataset
 from models import SMPL
-from models.dense_cnn import DPNet, get_LNet
 from models.geometric_layers import orthographic_projection, rodrigues
-from utils.renderer import Renderer, visualize_reconstruction, vis_mesh
 from utils import CheckpointDataLoader, CheckpointSaver
 import sys
 import time
 from tqdm import tqdm
-from models.uv_generator import Index_UV_Generator, cal_uv_weight
 import numpy as np
-import torch.nn.functional as F
-import os
 import utils.config as cfg
 from models.transformer_net import TNet
 from models.pvt import pvt_tiny, pvt_small, pvt_medium, pvt_large
+from utils.vis import visualize_vert
 
 model_dict = {
     'TMR': TNet,
@@ -70,10 +66,10 @@ class TransformerTrainer(BaseTrainer):
         # LSP indices from full list of keypoints
         self.to_lsp = list(range(14))
         if self.options.use_renderer:
+            from utils.renderer import Renderer, visualize_reconstruction, vis_mesh
             self.renderer = Renderer(faces=self.smpl.faces.cpu().numpy())
         else:
             self.renderer = None
-
 
         # Optionally start training from a pretrained checkpoint
         # Note that this is different from resuming training
@@ -283,15 +279,21 @@ class TransformerTrainer(BaseTrainer):
             pred_keypoints_2d_ = pred_keypoints_2d.cpu().numpy()[i, self.to_lsp]
             vertices = pred_vertices[i].cpu().numpy()
             cam = pred_camera[i].cpu().numpy()
-            # Visualize reconstruction and detected pose
-            rend_img = visualize_reconstruction(img, self.options.img_res, gt_keypoints_2d_, vertices,
-                                                pred_keypoints_2d_, cam, self.renderer)
-            rend_img = rend_img.transpose(2, 0, 1)
+            if self.renderer is not None:
+                from utils.renderer import visualize_reconstruction, vis_mesh
+                # Visualize reconstruction and detected pose
+                rend_img = visualize_reconstruction(img, self.options.img_res, gt_keypoints_2d_, vertices,
+                                                    pred_keypoints_2d_, cam, self.renderer)
+                rend_img = rend_img.transpose(2, 0, 1)
 
-            if 'gt_vert' in self.vis_data.keys() and self.renderer is not None:
-                rend_img2 = vis_mesh(img, self.vis_data['gt_vert'][i].cpu().numpy(), cam, self.renderer, color='blue')
-                rend_img2 = rend_img2.transpose(2, 0, 1)
-                rend_img = np.concatenate((rend_img, rend_img2), axis=2)
+                if 'gt_vert' in self.vis_data.keys() and self.renderer is not None:
+                    rend_img2 = vis_mesh(img, self.vis_data['gt_vert'][i].cpu().numpy(), cam, self.renderer, color='blue')
+                    rend_img2 = rend_img2.transpose(2, 0, 1)
+                    rend_img = np.concatenate((rend_img, rend_img2), axis=2)
+
+            else:
+                rend_img = visualize_vert(img, self.options.img_res, gt_keypoints_2d_, vertices,
+                                          pred_keypoints_2d_, cam, self.renderer)
 
             rend_imgs.append(torch.from_numpy(rend_img))
 
