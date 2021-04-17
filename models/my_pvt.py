@@ -3,10 +3,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 from functools import partial
 
-from timm.models.layers import DropPath, to_2tuple, trunc_normal_
-from timm.models.registry import register_model
-from timm.models.vision_transformer import _cfg
 from pvt import Mlp, Attention, PatchEmbed, Block
+from models.pvt_utils.layers import DropPath, to_2tuple, trunc_normal_
+from models.pvt_utils.registry import register_model
+from models.pvt_utils.cfg import _cfg
+from .smpl_head import HMRHead
+import utils.config as cfg
+
 
 __all__ = [
     'mypvt_tiny', 'mypvt_small', 'mypvt_medium', 'mypvt_large'
@@ -14,6 +17,7 @@ __all__ = [
 
 # import torchvision
 # torchvision.models.resnet50()
+
 
 class MyAttention(nn.Module):
     def __init__(self, dim, dim_out=-1, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0.):
@@ -200,7 +204,9 @@ class MyPyramidVisionTransformer(nn.Module):
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dims[3]))
 
         # classification head
-        self.head = nn.Linear(embed_dims[3], num_classes) if num_classes > 0 else nn.Identity()
+        # self.head = nn.Linear(embed_dims[3], num_classes) if num_classes > 0 else nn.Identity()
+        # smpl head
+        self.head = HMRHead(embed_dims[3], cfg.SMPL_MEAN_PARAMS, 3)
 
         # init weights
         trunc_normal_(self.pos_embed1, std=.02)
