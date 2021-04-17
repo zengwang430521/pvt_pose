@@ -132,6 +132,8 @@ class TransformerTrainer(BaseTrainer):
                 gt_vertices[gender == 1] = self.female_smpl(gt_pose[gender == 1], gt_betas[gender == 1])
             pred_para = self.TNet(images)
 
+        if 'pvt' in self.options.model:
+            pred_para = (p.unsqueeze(1) for p in pred_para)
         pred_pose, pred_shape, pred_camera = pred_para
         bs, s,  _ = pred_shape.shape
         pred_vertices = self.apply_smpl(pred_pose, pred_shape)
