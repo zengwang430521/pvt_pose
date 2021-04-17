@@ -30,7 +30,7 @@ class TrainOptions(object):
         io.add_argument('--pretrained_checkpoint', default=None, help='Load a pretrained network when starting training')
 
         arch = self.parser.add_argument_group('Architecture')
-        arch.add_argument('--model', default='pvt', choices=['TMR', 'pvt'])
+        arch.add_argument('--model', default='pvt_tiny')
 
         arch.add_argument('--img_res', type=int, default=224,
                           help='Rescale bounding boxes to size [img_res, img_res] before feeding it in the network')
