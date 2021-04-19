@@ -132,7 +132,7 @@ def main(options):
     for epoch in range(options.start_epoch, options.num_epochs):
         if options.distributed:
             sampler_train.set_epoch(epoch)
-        train_stats = train_one_epoch(model, criterion, data_loader_train, optimizer, device, epoch, summary_writer)
+        train_stats = train_one_epoch(model, criterion, data_loader_train, optimizer, device, epoch, options, summary_writer)
         lr_scheduler.step()
 
         if options.log_dir and utils.is_main_process():
