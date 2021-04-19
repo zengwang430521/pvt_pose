@@ -8,6 +8,7 @@ from .transformer import Transformer
 from .layers import ConvBottleNeck, HgNet
 from .position_encoding import build_position_encoding
 from .smpl_head import SimpleSMPLHead
+from train.transformer_trainer import model_dict
 
 class TNet(nn.Module):
 
@@ -108,7 +109,13 @@ class TMR(nn.Module):
         self.ngpu = ngpu
         self.to_lsp = list(range(14))
 
-        self.TNet = TNet(options).to(self.device)
+        # self.TNet = TNet(options).to(self.device)
+        model_class = model_dict[self.options.model]
+        if 'pvt' in self.options.model:
+            self.TNet = model_class().to(self.device)
+        else:
+            self.TNet = model_class(self.options).to(self.device)
+
         self.smpl = SMPL().to(self.device)
 
         if pretrained_checkpoint is not None:

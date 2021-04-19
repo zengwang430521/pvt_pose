@@ -1,3 +1,5 @@
+import warnings
+warnings.simplefilter("ignore", UserWarning)
 from utils import TrainOptions
 from train.transformer_trainer import TransformerTrainer
 

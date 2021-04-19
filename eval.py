@@ -32,7 +32,6 @@ from os.path import join, exists
 from models import SMPL
 from models.transformer_net import TMR
 
-
 # Define command-line arguments
 parser = argparse.ArgumentParser()
 
