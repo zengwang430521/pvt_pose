@@ -30,7 +30,7 @@ from utils.imutils import uncrop
 from utils.pose_utils import reconstruction_error
 from os.path import join, exists
 from models import SMPL
-from models.transformer_net import TMR
+from models.TMR import TMR
 
 # Define command-line arguments
 parser = argparse.ArgumentParser()
