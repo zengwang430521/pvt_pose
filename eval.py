@@ -13,6 +13,8 @@ Running the above command will compute the MPJPE and Reconstruction Error on the
 """
 from __future__ import print_function
 from __future__ import division
+import warnings
+warnings.simplefilter("ignore", UserWarning)
 import cv2
 import torch
 from torch.utils.data import DataLoader
