@@ -47,6 +47,7 @@ def main(options):
     if utils.is_main_process():
         summary_writer = SummaryWriter(options.summary_dir)
         summary_writer.iter_num = 0
+        print('summary writer created')
     else:
         summary_writer = None
 
@@ -138,7 +139,7 @@ def main(options):
         if options.log_dir and utils.is_main_process():
             if (epoch + 1) % options.save_freq == 0:
                 if not os.path.exists(options.log_dir):
-                    os.makedirs(options.log_dir)
+                    os.makedirs(options.log_dir, exist_ok=True)
                 checkpoint_path = log_dir / f'checkpoint{epoch:04}.pth'
                 utils.save_on_master({
                     'model': model_without_ddp.state_dict(),

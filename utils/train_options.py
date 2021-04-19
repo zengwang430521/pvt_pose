@@ -167,11 +167,11 @@ class TrainOptions(object):
             self.args.log_dir = os.path.join(os.path.abspath(self.args.log_dir), self.args.name)
             self.args.summary_dir = os.path.join(self.args.log_dir, 'tensorboard')
             if not os.path.exists(self.args.log_dir):
-                os.makedirs(self.args.log_dir)
+                os.makedirs(self.args.log_dir, exist_ok=True)
 
             self.args.checkpoint_dir = os.path.join(self.args.log_dir, 'checkpoints')
             if not os.path.exists(self.args.checkpoint_dir):
-                os.makedirs(self.args.checkpoint_dir)
+                os.makedirs(self.args.checkpoint_dir, exist_ok=True)
 
             self.save_dump()
             return self.args
@@ -181,7 +181,7 @@ class TrainOptions(object):
         The default location is logs/expname/config.json.
         """
         if not os.path.exists(self.args.log_dir):
-            os.makedirs(self.args.log_dir)
+            os.makedirs(self.args.log_dir, exist_ok=True)
         with open(os.path.join(self.args.log_dir, "config.json"), "w") as f:
             json.dump(vars(self.args), f, indent=4)
         return
@@ -293,11 +293,11 @@ class DDPTrainOptions(object):
             self.args.log_dir = os.path.join(os.path.abspath(self.args.log_dir), self.args.name)
             self.args.summary_dir = os.path.join(self.args.log_dir, 'tensorboard')
             if not os.path.exists(self.args.log_dir):
-                os.makedirs(self.args.log_dir)
+                os.makedirs(self.args.log_dir, exist_ok=True)
 
             self.args.checkpoint_dir = os.path.join(self.args.log_dir, 'checkpoints')
             if not os.path.exists(self.args.checkpoint_dir):
-                os.makedirs(self.args.checkpoint_dir)
+                os.makedirs(self.args.checkpoint_dir, exist_ok=True)
 
             self.save_dump()
             return self.args
@@ -307,7 +307,7 @@ class DDPTrainOptions(object):
         The default location is logs/expname/config.json.
         """
         if not os.path.exists(self.args.log_dir):
-            os.makedirs(self.args.log_dir)
+            os.makedirs(self.args.log_dir, exist_ok=True)
         with open(os.path.join(self.args.log_dir, "config.json"), "w") as f:
             json.dump(vars(self.args), f, indent=4)
         return

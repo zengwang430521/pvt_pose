@@ -304,7 +304,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if not exists(args.save_root):
-        os.makedirs(args.save_root)
+        os.makedirs(args.save_root, exist_ok=True)
 
     if args.config is None:
         args.config = join(os.path.dirname(args.checkpoint), '../config.json')
