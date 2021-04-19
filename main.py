@@ -163,6 +163,6 @@ def main(options):
 
 
 if __name__ == '__main__':
-    options = DDPTrainOptions().parse_options()
+    options = DDPTrainOptions().parse_args()
     main(options)
 
