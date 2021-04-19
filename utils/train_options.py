@@ -246,7 +246,6 @@ class DDPTrainOptions(object):
         train.add_argument('--num_epochs', type=int, default=30, help='Total number of training epochs')
         train.add_argument('--batch_size', type=int, default=2, help='Batch size')
         train.add_argument('--summary_steps', type=int, default=100, help='Summary saving frequency')
-        train.add_argument('--checkpoint_steps', type=int, default=5000, help='Checkpoint saving frequency')
         train.add_argument('--test_steps', type=int, default=10000, help='Testing frequency')
         train.add_argument('--rot_factor', type=float, default=30, help='Random rotation in the range [-rot_factor, rot_factor]')
         train.add_argument('--noise_factor', type=float, default=0.4, help='Random rotation in the range [-rot_factor, rot_factor]')
