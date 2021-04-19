@@ -13,8 +13,8 @@ Running the above command will compute the MPJPE and Reconstruction Error on the
 """
 from __future__ import print_function
 from __future__ import division
-import warnings
-warnings.simplefilter("ignore", UserWarning)
+# import warnings
+# warnings.simplefilter("ignore", UserWarning)
 import cv2
 import torch
 from torch.utils.data import DataLoader
@@ -47,7 +47,6 @@ parser.add_argument('--batch_size', default=16, type=int, help='Batch size for t
 parser.add_argument('--shuffle', default=False, action='store_true', help='Shuffle data')
 parser.add_argument('--num_workers', default=8, type=int, help='Number of processes for data loading')
 
-parser.add_argument('--gt_root', type=str, default='/home/wzeng/mydata/h3.6m/test')
 parser.add_argument('--save_root', type=str, default='./results')
 parser.add_argument('--ngpu', type=int, default=1)
 

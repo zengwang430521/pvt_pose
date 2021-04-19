@@ -342,7 +342,7 @@ class TransformerTrainer(BaseTrainer):
 
             vert_image = torch.cat([vert_image_gt, vert_image], dim=-1)
             vert_image = make_grid(vert_image, nrow=1)
-            self.summary_writer.add_image('vert', rend_imgs, self.step_count)
+            self.summary_writer.add_image('vert', vert_image, self.step_count)
 
         # import matplotlib.pyplot as plt
         # plt.imshow(rend_imgs.permute(1, 2, 0).cpu().numpy())

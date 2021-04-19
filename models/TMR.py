@@ -5,6 +5,15 @@ from train.transformer_trainer import model_dict
 from .smpl import SMPL
 
 
+def build_model(options):
+    model_class = model_dict[options.model]
+    if 'pvt' in options.model:
+        model = model_class()
+    else:
+        model = model_class(options)
+    return model
+
+
 class TMR(nn.Module):
     def __init__(self, options, pretrained_checkpoint=None, ngpu=1):
         super().__init__()
@@ -13,12 +22,7 @@ class TMR(nn.Module):
         self.ngpu = ngpu
         self.to_lsp = list(range(14))
 
-        # self.TNet = TNet(options).to(self.device)
-        model_class = model_dict[self.options.model]
-        if 'pvt' in self.options.model:
-            self.TNet = model_class().to(self.device)
-        else:
-            self.TNet = model_class(self.options).to(self.device)
+        self.TNet = build_model(options).to(self.device)
 
         self.smpl = SMPL().to(self.device)
 
