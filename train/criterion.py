@@ -37,11 +37,7 @@ class MeshLoss(nn.Module):
             pose = pose.reshape(bs * s, 24, 3, 3)
             shape = shape.reshape(bs * s, 10)
 
-        if pose.is_cuda and self.options.ngpu > 1:
-            vertices = data_parallel(self.smpl, (pose, shape), range(self.options.ngpu))
-        else:
-            vertices = self.smpl(pose, shape)
-
+        vertices = self.smpl(pose, shape)
         if flag_stage:
             vertices = vertices.reshape(bs, s, 6890, 3)
         return vertices
