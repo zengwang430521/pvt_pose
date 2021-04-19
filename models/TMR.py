@@ -37,19 +37,27 @@ class TMR(nn.Module):
             with torch.no_grad():
                 if self.ngpu > 1 and images.shape[0] % self.ngpu == 0:
                     pred_para = data_parallel(self.TNet, images, range(self.options.ngpu))
-                    pred_pose, pred_shape, pred_camera = pred_para[0][:, -1], pred_para[1][:, -1], pred_para[2][:, -1]
+                    if pred_para[-1].dim() == 3:
+                        pred_para = (p[:, -1] for p in pred_para)
+                    pred_pose, pred_shape, pred_camera = pred_para
                     pred_vertices = data_parallel(self.smpl, (pred_pose, pred_shape), range(self.options.ngpu))
                 else:
                     pred_para = self.TNet(images)
-                    pred_pose, pred_shape, pred_camera = pred_para[0][:, -1], pred_para[1][:, -1], pred_para[2][:, -1]
+                    if pred_para[-1].dim() == 3:
+                        pred_para = (p[:, -1] for p in pred_para)
+                    pred_pose, pred_shape, pred_camera = pred_para
                     pred_vertices = self.smpl(pred_pose, pred_shape)
         else:
             if self.ngpu > 1 and images.shape[0] % self.ngpu == 0:
-                pred_para, inter_para = data_parallel(self.TNet, images, range(self.options.ngpu))
+                pred_para = data_parallel(self.TNet, images, range(self.options.ngpu))
+                if pred_para[-1].dim() == 3:
+                    pred_para = (p[:, -1] for p in pred_para)
                 pred_pose, pred_shape, pred_camera = pred_para
                 pred_vertices = data_parallel(self.smpl, (pred_pose, pred_shape), range(self.options.ngpu))
             else:
-                pred_para, inter_para = self.TNet(images)
+                pred_para = self.TNet(images)
+                if pred_para[-1].dim() == 3:
+                    pred_para = (p[:, -1] for p in pred_para)
                 pred_pose, pred_shape, pred_camera = pred_para
                 pred_vertices = self.smpl(pred_pose, pred_shape)
 
