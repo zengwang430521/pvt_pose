@@ -129,7 +129,7 @@ def main(options):
     print("Start training")
     log_dir = Path(options.log_dir)
     start_time = time.time()
-    for epoch in range(options.start_epoch, options.epochs):
+    for epoch in range(options.start_epoch, options.num_epochs):
         if options.distributed:
             sampler_train.set_epoch(epoch)
         train_stats = train_one_epoch(model, criterion, data_loader_train, optimizer, device, epoch, summary_writer)
