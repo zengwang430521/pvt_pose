@@ -325,7 +325,7 @@ class TransformerTrainer(BaseTrainer):
             index_batch = index_batch[valid]
             vert_2d = 0.5 * (vert_2d + 1) * (vis_res - 1)
             vert_2d = vert_2d.long().clamp(min=0, max=vis_res - 1)
-            vert_image[index_batch, :, vert_2d[:, 1], vert_2d[:, 0]] = 0.5
+            vert_image[index_batch[:, 0], :, vert_2d[:, 1], vert_2d[:, 0]] = 0.5
 
             vert_image_gt = self.vis_data['image'].float().clone()
             gt_vertices = self.vis_data['gt_vert'].detach().clone()
@@ -336,17 +336,18 @@ class TransformerTrainer(BaseTrainer):
             valid = (vert_2d[:, 0] >= -1) * (vert_2d[:, 0] <= 1) * (vert_2d[:, 1] >= -1) * (vert_2d[:, 1] <= 1)
             vert_2d = vert_2d[valid, :]
             index_batch = index_batch[valid]
-            vert_2d = 0.5 * (vert_2d + 1) * (vis_size - 1)
-            vert_2d = vert_2d.long().clamp(min=0, max=vis_size - 1)
-            vert_image_gt[index_batch, :, vert_2d[:, 1], vert_2d[:, 0]] = 0.5
+            vert_2d = 0.5 * (vert_2d + 1) * (vis_res - 1)
+            vert_2d = vert_2d.long().clamp(min=0, max=vis_res - 1)
+            vert_image_gt[index_batch[:, 0], :, vert_2d[:, 1], vert_2d[:, 0]] = 0.5
 
             vert_image = torch.cat([vert_image_gt, vert_image], dim=-1)
             vert_image = make_grid(vert_image, nrow=1)
             self.summary_writer.add_image('vert', vert_image, self.step_count)
 
-        # import matplotlib.pyplot as plt
-        # plt.imshow(rend_imgs.permute(1, 2, 0).cpu().numpy())
-        # plt.imshow(vert_image.permute(1, 2, 0).cpu().numpy())
+        import matplotlib.pyplot as plt
+        plt.imshow(rend_imgs.permute(1, 2, 0).cpu().numpy())
+        plt.imshow(vert_image.permute(1, 2, 0).cpu().numpy())
+        t=0
 
 
 

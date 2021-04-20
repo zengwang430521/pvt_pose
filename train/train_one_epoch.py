@@ -69,10 +69,10 @@ def write_summary(summary_writer, loss_dict, vis_data):
     pred_keypoints_2d = vis_data['pred_joint']
     pred_camera = vis_data['pred_cam']
     rend_imgs = []
-    vis_size = pred_vertices.shape[0]
+    vis_num = pred_vertices.shape[0]
 
     # skeleton
-    for i in range(vis_size):
+    for i in range(vis_num):
         img = vis_data['image'][i].cpu().numpy().transpose(1, 2, 0)
         H, W, C = img.shape
 
@@ -104,7 +104,7 @@ def write_summary(summary_writer, loss_dict, vis_data):
         index_batch = index_batch[valid]
         vert_2d = 0.5 * (vert_2d + 1) * (vis_res - 1)
         vert_2d = vert_2d.long().clamp(min=0, max=vis_res - 1)
-        vert_image[index_batch, :, vert_2d[:, 1], vert_2d[:, 0]] = 0.5
+        vert_image[index_batch[:, 0], :, vert_2d[:, 1], vert_2d[:, 0]] = 0.5
 
         vert_image_gt = vis_data['image'].float().clone()
         gt_vertices = vis_data['gt_vert'].detach().clone()
@@ -115,9 +115,9 @@ def write_summary(summary_writer, loss_dict, vis_data):
         valid = (vert_2d[:, 0] >= -1) * (vert_2d[:, 0] <= 1) * (vert_2d[:, 1] >= -1) * (vert_2d[:, 1] <= 1)
         vert_2d = vert_2d[valid, :]
         index_batch = index_batch[valid]
-        vert_2d = 0.5 * (vert_2d + 1) * (vis_size - 1)
-        vert_2d = vert_2d.long().clamp(min=0, max=vis_size - 1)
-        vert_image_gt[index_batch, :, vert_2d[:, 1], vert_2d[:, 0]] = 0.5
+        vert_2d = 0.5 * (vert_2d + 1) * (vis_res - 1)
+        vert_2d = vert_2d.long().clamp(min=0, max=vis_res - 1)
+        vert_image_gt[index_batch[:, 0], :, vert_2d[:, 1], vert_2d[:, 0]] = 0.5
 
         vert_image = torch.cat([vert_image_gt, vert_image], dim=-1)
         vert_image = make_grid(vert_image, nrow=1)
