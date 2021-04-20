@@ -229,7 +229,7 @@ class DDPTrainOptions(object):
         parser = self.parser.add_argument_group('Transformer')
         parser.add_argument('--use_renderer', action='store_true')
         parser.add_argument('--seed', default=42, type=int)
-        parser.add_argument('--pretrain', default='', help='pretrained checkpoint')
+        parser.add_argument('--pretrain_from', default='', help='pretrained checkpoint')
         parser.add_argument('--resume_from', default='', help='resume from checkpoint')
         parser.add_argument('--start_epoch', default=0, type=int, metavar='N', help='start epoch')
         parser.add_argument('--device', default='cuda',

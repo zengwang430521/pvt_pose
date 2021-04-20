@@ -95,8 +95,8 @@ def main(options):
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[options.gpu])
         model_without_ddp = model.module
 
-    if options.pretrain:
-        checkpoint = torch.load(options.pretrain, map_location='cpu')
+    if options.pretrain_from:
+        checkpoint = torch.load(options.pretrain_from, map_location='cpu')
         missing_keys, unexpected_keys = model_without_ddp.load_state_dict(checkpoint['model'], strict=False)
         unexpected_keys = [k for k in unexpected_keys if not (k.endswith('total_params') or k.endswith('total_ops'))]
         if len(missing_keys) > 0:
@@ -104,8 +104,8 @@ def main(options):
         if len(unexpected_keys) > 0:
             print('Unexpected Keys: {}'.format(unexpected_keys))
 
-    if options.resume:
-        checkpoint = torch.load(options.resume, map_location='cpu')
+    if options.resume_from:
+        checkpoint = torch.load(options.resume_from, map_location='cpu')
         missing_keys, unexpected_keys = model_without_ddp.load_state_dict(checkpoint['model'], strict=False)
         unexpected_keys = [k for k in unexpected_keys if not (k.endswith('total_params') or k.endswith('total_ops'))]
         if len(missing_keys) > 0:
@@ -126,6 +126,7 @@ def main(options):
             options.start_epoch = checkpoint['epoch'] + 1
             if utils.is_main_process():
                 summary_writer.iter_num = checkpoint['iter_num']
+        print('resume finished.')
 
     print("Start training")
     log_dir = Path(options.log_dir)
