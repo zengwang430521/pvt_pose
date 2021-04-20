@@ -126,6 +126,7 @@ def main(options):
             options.start_epoch = checkpoint['epoch'] + 1
             if utils.is_main_process():
                 summary_writer.iter_num = checkpoint['iter_num']
+            print('resume optimizer')
         print('resume finished.')
 
     print("Start training")
