@@ -27,7 +27,7 @@ class TMR(nn.Module):
         self.smpl = SMPL().to(self.device)
 
         if pretrained_checkpoint is not None:
-            checkpoint = torch.load(pretrained_checkpoint)
+            checkpoint = torch.load(pretrained_checkpoint, map_location='cpu')
             try:
                 self.TNet.load_state_dict(checkpoint['TNet'])
                 print('Checkpoint loaded')

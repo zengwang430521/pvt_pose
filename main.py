@@ -150,7 +150,7 @@ def main(options):
                     'epoch': epoch,
                     'options': options,
                     'iter_num': summary_writer.iter_num,
-                }, checkpoint_path)
+                }, checkpoint_path, _use_new_zipfile_serialization=False)
 
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                      'epoch': epoch,
