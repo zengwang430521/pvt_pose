@@ -44,7 +44,7 @@ def main(options):
     print(options)
 
     # summary writer
-    if utils.is_main_process():
+    if utils.is_main_process() and (not options.eval):
         summary_writer = SummaryWriter(options.summary_dir)
         summary_writer.iter_num = 0
         print('summary writer created')
