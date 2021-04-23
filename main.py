@@ -15,11 +15,11 @@ import torch
 import utils.misc as utils
 import utils.samplers as samplers
 from torch.utils.data import DataLoader
-from train.train_one_epoch import train_one_epoch
+from train.train_one_epoch import train_one_epoch, evaluate
 from pathlib import Path
-from train.criterion import MeshLoss
+from train.criterion import MeshLoss, JointEvaluator
 from models.TMR import build_model
-from datasets.datasets import create_dataset
+from datasets.datasets import create_dataset, create_val_dataset
 from utils.train_options import DDPTrainOptions
 from tensorboardX import SummaryWriter
 
@@ -64,6 +64,7 @@ def main(options):
     model = build_model(options)
     model.to(device)
     criterion = MeshLoss(options, device)
+    evaluator = JointEvaluator(options, device)
 
     model_without_ddp = model
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -75,18 +76,26 @@ def main(options):
 
     print('start build dataset')
     dataset_train = create_dataset(options.dataset, options)
+    dataset_val = create_val_dataset(options.val_dataset, options)
+
     print('finish build dataset')
 
     if options.distributed:
         sampler_train = samplers.DistributedSampler(dataset_train)
+        sampler_val = samplers.DistributedSampler(dataset_val, shuffle=False)
     else:
         sampler_train = torch.utils.data.RandomSampler(dataset_train)
+        sampler_val = torch.utils.data.SequentialSampler(dataset_val)
 
     batch_sampler_train = torch.utils.data.BatchSampler(sampler_train, options.batch_size, drop_last=True)
 
     data_loader_train = DataLoader(dataset_train, batch_sampler=batch_sampler_train,
                                    num_workers=options.num_workers,
                                    pin_memory=True)
+
+    data_loader_val = DataLoader(dataset_val, options.batch_size, sampler=sampler_val,
+                                 drop_last=False, num_workers=options.num_workers,
+                                 pin_memory=True)
 
     optimizer = build_optimizer(model, options)
     lr_scheduler = build_scheduler(optimizer, options)
@@ -129,6 +138,14 @@ def main(options):
             print('resume optimizer')
         print('resume finished.')
 
+    if options.eval:
+        test_stats = evaluate(model, evaluator, data_loader_val, device)
+        test_info = 'Test on ' + options.val_dataset
+        for k, v in test_stats.items():
+            test_info += ' %s:%.4f' % (k, v)
+        print(test_info)
+        return
+
     print("Start training")
     log_dir = Path(options.log_dir)
     start_time = time.time()
@@ -142,7 +159,7 @@ def main(options):
             if (epoch + 1) % options.save_freq == 0:
                 if not os.path.exists(options.log_dir):
                     os.makedirs(options.log_dir, exist_ok=True)
-                checkpoint_path = log_dir / f'checkpoint{epoch:04}.pth'
+                checkpoint_path = log_dir / f'checkpoints/checkpoint{epoch:04}.pth'
                 utils.save_on_master({
                     'model': model_without_ddp.state_dict(),
                     'optimizer': optimizer.state_dict(),

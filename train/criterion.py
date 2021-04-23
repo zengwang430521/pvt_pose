@@ -25,7 +25,7 @@ class MeshLoss(nn.Module):
 
         # Create loss functions
         self.criterion_shape = nn.L1Loss().to(self.device)
-        self.criterion_keypoints = nn.MSELoss(reduction='none').to(self.device)
+        self.criterion_joints = nn.MSELoss(reduction='none').to(self.device)
         self.criterion_keypoints_3d = nn.L1Loss(reduction='none').to(self.device)
         self.criterion_regr = nn.MSELoss().to(self.device)
 
@@ -304,8 +304,63 @@ class MeshLoss(nn.Module):
         return losses, vis_data
 
 
+class JointEvaluator(nn.Module):
+    def __init__(self, options, device):
+        super().__init__()
+        self.options = options
+        self.device = device
 
+        # prepare SMPL model
+        self.smpl = SMPL().to(self.device)
+        self.female_smpl = SMPL(cfg.FEMALE_SMPL_FILE).to(self.device)
+        self.male_smpl = SMPL(cfg.MALE_SMPL_FILE).to(self.device)
+        self.joint_mapper = cfg.J24_TO_J17 if options.val_dataset == 'mpi-inf-3dhp' else cfg.J24_TO_J14
+        self.pred_joints = []
+        self.gt_joints = []
+        self.mpjpe = []
 
+    def apply_smpl(self, pose, shape):
+        flag_stage = False
+        if shape.dim() == 3:  # s, bs, 10
+            bs, s, _ = shape.shape
+            flag_stage = True
+            pose = pose.reshape(bs * s, 24, 3, 3)
+            shape = shape.reshape(bs * s, 10)
+
+        vertices = self.smpl(pose, shape)
+        if flag_stage:
+            vertices = vertices.reshape(bs, s, 6890, 3)
+        return vertices
+
+    def forward(self, pred_para, input_batch):
+        """Training step."""
+        dtype = torch.float32
+        # load predicted smpl paras
+        if pred_para[-1].dim() == 3:
+            pred_para = (p[:, -1] for p in pred_para)
+        pred_pose, pred_shape, pred_camera = pred_para
+        pred_vertices = self.apply_smpl(pred_pose, pred_shape)
+        pred_joints_3d = self.smpl.get_train_joints(pred_vertices)[:, self.joint_mapper]
+
+        if self.options.val_dataset == '3dpw':
+            gt_pose = input_batch['pose'].to(self.device)
+            gt_betas = input_batch['betas'].to(self.device)
+            gender = input_batch['gender'].to(self.device)
+            batch_size = pred_shape.shape[0]
+            gt_vertices = gt_pose.new_zeros([batch_size, 6890, 3])
+            with torch.no_grad():
+                gt_vertices[gender < 0] = self.smpl(gt_pose[gender < 0], gt_betas[gender < 0])
+                gt_vertices[gender == 0] = self.male_smpl(gt_pose[gender == 0], gt_betas[gender == 0])
+                gt_vertices[gender == 1] = self.female_smpl(gt_pose[gender == 1], gt_betas[gender == 1])
+            gt_joints_3d = self.smpl.get_train_joints(gt_vertices)[:, self.joint_mapper]
+        else:
+            gt_joints_3d = input_batch['pose_3d'][:, self.joint_mapper, :3].to(self.device)
+
+        gt_pelvis = (gt_joints_3d[:, [2]] + gt_joints_3d[:, [3]]) / 2
+        gt_joints_3d = gt_joints_3d - gt_pelvis
+        pred_pelvis = (pred_joints_3d[:, [2]] + pred_joints_3d[:, [3]]) / 2
+        pred_joints_3d = pred_joints_3d - pred_pelvis
+        return pred_joints_3d, gt_joints_3d
 
 
 

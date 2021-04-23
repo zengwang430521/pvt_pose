@@ -4,7 +4,8 @@ import utils.misc as utils
 from utils.vis import visualize_vert
 from torchvision.utils import make_grid
 from models.geometric_layers import orthographic_projection
-
+from utils.pose_utils import reconstruction_error
+import numpy as np
 
 def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     dataloader: Iterable,
@@ -122,3 +123,38 @@ def write_summary(summary_writer, loss_dict, vis_data):
         vert_image = torch.cat([vert_image_gt, vert_image], dim=-1)
         vert_image = make_grid(vert_image, nrow=1)
         summary_writer.add_image('vert', vert_image, step_count)
+
+
+@torch.no_grad()
+def evaluate(model, evaluator, dataloader, device):
+    model.eval()
+
+    metric_logger = utils.MetricLogger(delimiter="  ")
+    metric_logger.add_meter('MPJPE', utils.SmoothedValue(window_size=1, fmt='{global_avg:.2f}'))
+    metric_logger.add_meter('MPJPE_PA', utils.SmoothedValue(window_size=1, fmt='{global_avg:.2f}'))
+    header = 'Test:'
+    mpjpe = []
+    mpjpe_pa = []
+
+    print_freq = 20
+    data_iter = iter(dataloader)
+    for _ in metric_logger.log_every(range(len(dataloader)), print_freq, header):
+
+        input_batch = data_iter.next()
+        images = input_batch['img'].to(device)
+        pred_para = model(images)
+        pred_joints_3d, gt_joints_3d = evaluator(pred_para, input_batch)
+        pred_joints_3d = utils.all_gather(pred_joints_3d)
+        pred_joints_3d = torch.cat(pred_joints_3d, dim=0)
+        gt_joints_3d = utils.all_gather(gt_joints_3d)
+        gt_joints_3d = torch.cat(gt_joints_3d, dim=0)
+        error = torch.sqrt(((pred_joints_3d - gt_joints_3d) ** 2).sum(dim=-1)).mean(dim=-1).detach().cpu().numpy() * 1000
+        error_pa = reconstruction_error(pred_joints_3d.cpu().numpy(), gt_joints_3d.cpu().numpy(), reduction=None) * 1000
+        mpjpe.append(error)
+        mpjpe_pa.append(error_pa)
+
+        metric_logger.update(MPJPE=float(error.mean()),
+                             MPJPE_PA=float(error_pa.mean()))
+    stats = dict(MPJPE=float(np.concatenate(mpjpe, axis=0).mean()),
+                 MPJPE_PA=float(np.concatenate(mpjpe_pa, axis=0).mean()))
+    return stats

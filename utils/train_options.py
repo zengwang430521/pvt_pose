@@ -237,11 +237,16 @@ class DDPTrainOptions(object):
         parser.add_argument('--save_freq', default=5, type=int)
         parser.add_argument('--lr_drop', default=500, type=int)
 
+        parser.add_argument('--eval', action='store_true')
+        parser.add_argument('--val_dataset', default='h36m-p2', help='Choose val dataset')
+
 
         train = self.parser.add_argument_group('Training Options')
         train.add_argument('--dataset', default='up-3d',
                            choices=['itw', 'all', 'h36m', 'up-3d', 'mesh', 'spin', 'surreal'],
                            help='Choose training dataset')
+
+
 
         train.add_argument('--num_epochs', type=int, default=30, help='Total number of training epochs')
         train.add_argument('--batch_size', type=int, default=2, help='Batch size')

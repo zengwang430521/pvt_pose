@@ -55,12 +55,14 @@ def compute_similarity_transform(S1, S2):
 
     return S1_hat
 
+
 def compute_similarity_transform_batch(S1, S2):
     """Batched version of compute_similarity_transform."""
     S1_hat = np.zeros_like(S1)
     for i in range(S1.shape[0]):
         S1_hat[i] = compute_similarity_transform(S1[i], S2[i])
     return S1_hat
+
 
 def reconstruction_error(S1, S2, reduction='mean'):
     """Do Procrustes alignment and compute reconstruction error."""

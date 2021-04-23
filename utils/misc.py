@@ -512,6 +512,7 @@ def get_total_grad_norm(parameters, norm_type=2):
                             norm_type)
     return total_norm
 
+
 def inverse_sigmoid(x, eps=1e-5):
     x = x.clamp(min=0, max=1)
     x1 = x.clamp(min=eps)
