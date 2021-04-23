@@ -124,6 +124,7 @@ def run_evaluation(model, opt, options, dataset_name, log_freq=50):
 
     # Iterate over the entire dataset
     for step, batch in enumerate(tqdm(data_loader, desc='Eval', total=len(data_loader))):
+        print('step:', step)
         # Get ground truth annotations from the batch
         gt_pose = batch['pose'].to(device)
         gt_betas = batch['betas'].to(device)
