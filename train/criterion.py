@@ -25,7 +25,7 @@ class MeshLoss(nn.Module):
 
         # Create loss functions
         self.criterion_shape = nn.L1Loss().to(self.device)
-        self.criterion_joints = nn.MSELoss(reduction='none').to(self.device)
+        self.criterion_keypoints = nn.MSELoss(reduction='none').to(self.device)
         self.criterion_keypoints_3d = nn.L1Loss(reduction='none').to(self.device)
         self.criterion_regr = nn.MSELoss().to(self.device)
 

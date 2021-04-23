@@ -1,7 +1,5 @@
 import torch
 import torch.nn as nn
-from .uv_generator import Index_UV_Generator
-from models.dense_cnn import DPNet, get_LNet
 from torch.nn.parallel import data_parallel
 from .resnet import resnet50backbone
 from .transformer import Transformer
