@@ -28,8 +28,9 @@ class TMR(nn.Module):
 
         if pretrained_checkpoint is not None:
             checkpoint = torch.load(pretrained_checkpoint, map_location='cpu')
+            keyname = 'TNet' if 'TNet' in checkpoint else 'model'
             try:
-                self.TNet.load_state_dict(checkpoint['TNet'])
+                self.TNet.load_state_dict(checkpoint[keyname])
                 print('Checkpoint loaded')
             except KeyError:
                 print('loading failed')
