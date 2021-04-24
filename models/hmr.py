@@ -11,6 +11,7 @@ class HMR(nn.Module):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.options = options
         self.backbone = resnet50(pretrained=True)
+        self.backbone.fc = None
         self.smpl_head = HMRHead(2048)
 
     def forward(self, images):
