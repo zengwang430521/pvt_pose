@@ -178,6 +178,13 @@ def main(options):
             with (log_dir / "log.txt").open("a") as f:
                 f.write(json.dumps(log_stats) + "\n")
 
+        if (epoch + 1) % options.eval_freq == 0:
+            test_stats = evaluate(model, evaluator, data_loader_val, device)
+            test_info = 'Test on ' + options.val_dataset
+            for k, v in test_stats.items():
+                test_info += ' %s:%.4f' % (k, v)
+            print(test_info)
+
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))

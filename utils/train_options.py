@@ -235,6 +235,7 @@ class DDPTrainOptions(object):
         parser.add_argument('--device', default='cuda',
                             help='device to use for training / testing')
         parser.add_argument('--save_freq', default=5, type=int)
+        parser.add_argument('--eval_freq', default=1, type=int)
         parser.add_argument('--lr_drop', default=500, type=int)
 
         parser.add_argument('--eval', action='store_true')
