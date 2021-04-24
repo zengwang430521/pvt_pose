@@ -22,14 +22,23 @@ from models.TMR import build_model
 from datasets.datasets import create_dataset, create_val_dataset
 from utils.train_options import DDPTrainOptions
 from tensorboardX import SummaryWriter
+# from timm.scheduler import create_scheduler
+# from timm.optim import create_optimizer
 
 
 def build_optimizer(model, options):
-    optimizer = torch.optim.Adam(
-        params=list(model.parameters()),
-        lr=options.lr,
-        betas=(options.adam_beta1, 0.999),
-        weight_decay=options.wd)
+    if options.opt == 'adamw':
+        optimizer = torch.optim.AdamW(
+            params=list(model.parameters()),
+            lr=options.lr,
+            betas=(options.adam_beta1, 0.999),
+            weight_decay=options.wd)
+    else:
+        optimizer = torch.optim.Adam(
+            params=list(model.parameters()),
+            lr=options.lr,
+            betas=(options.adam_beta1, 0.999),
+            weight_decay=options.wd)
     return optimizer
 
 
@@ -69,15 +78,10 @@ def main(options):
     model_without_ddp = model
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print('number of params:', n_parameters)
-    # for n, p in model_without_ddp.named_parameters():
-    #     print(n)
-    # dataset_train = build_dataset(image_set='train', options=options)
-    # dataset_val = build_dataset(image_set='val', options=options)
 
     print('start build dataset')
     dataset_train = create_dataset(options.dataset, options)
     dataset_val = create_val_dataset(options.val_dataset, options)
-
     print('finish build dataset')
 
     if options.distributed:
@@ -97,8 +101,10 @@ def main(options):
                                  drop_last=False, num_workers=options.num_workers,
                                  pin_memory=True)
 
-    optimizer = build_optimizer(model, options)
+    optimizer = build_optimizer(model_without_ddp, options)
     lr_scheduler = build_scheduler(optimizer, options)
+    # optimizer = create_optimizer(options, model_without_ddp)
+    # lr_scheduler, _ = create_scheduler(options, optimizer)
 
     if options.distributed:
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[options.gpu])
@@ -184,6 +190,10 @@ def main(options):
             for k, v in test_stats.items():
                 test_info += ' %s:%.4f' % (k, v)
             print(test_info)
+
+            if options.log_dir and utils.is_main_process():
+                with (log_dir / "log.txt").open("a") as f:
+                    f.write(test_info + "\n")
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))

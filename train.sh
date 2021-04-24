@@ -9,8 +9,20 @@ python train.py --dataset=mesh --batch_size=256 --ngpu=8 --num_workers=16 --num_
 --name=mypvt_medium --model=mypvt_medium
 
 GPUS_PER_NODE=8 ./tools/run_dist_slurm.sh pat_earth pvt_m 8 ./tools/pose.sh
---dataset=mesh --batch_size=32 --num_workers=4 --num_epochs=50 --summary_steps=100
+--dataset=mesh --batch_size=64 --num_workers=4 --num_epochs=50 --summary_steps=100
 --name=pvt_medium3 --model=pvt_medium
+
+GPUS_PER_NODE=8 ./tools/run_dist_slurm.sh pat_earth pvt_m 8 ./tools/pose.sh
+--dataset=mesh --batch_size=64 --num_workers=4 --num_epochs=50 --summary_steps=100
+--name=pvt_medium4 --model=pvt_medium --opt=adamw --lr=1e-4 --wd=0.05
+
+
+
+
+
+
+
+
 
 
 GPUS_PER_NODE=8 ./tools/run_dist_slurm.sh pat_earth pvt 8 ./tools/pose.sh
