@@ -13,5 +13,5 @@ GPUS_PER_NODE=8 ./tools/run_dist_slurm.sh pat_earth pvt_medium 8 ./tools/pose.sh
 --name=pvt_medium2 --model=pvt_medium --resume_from=logs/pvt_medium2/checkpoint0029.pth
 
 GPUS_PER_NODE=8 ./tools/run_dist_slurm.sh pat_earth pvt 8 ./tools/pose.sh
---dataset=mesh --batch_size=64 --num_workers=4 --num_epochs=30 --summary_steps=100
+--dataset=mesh --batch_size=64 --num_workers=4 --num_epochs=30 --summary_steps=50
 --name=hmr --model=hmr

@@ -7,6 +7,7 @@ from models.geometric_layers import orthographic_projection
 from utils.pose_utils import reconstruction_error
 import numpy as np
 
+
 def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     dataloader: Iterable,
                     optimizer: torch.optim.Optimizer,
@@ -144,10 +145,15 @@ def evaluate(model, evaluator, dataloader, device):
         images = input_batch['img'].to(device)
         pred_para = model(images)
         pred_joints_3d, gt_joints_3d = evaluator(pred_para, input_batch)
+
         pred_joints_3d = utils.all_gather(pred_joints_3d)
+        pred_joints_3d = [p.to(device) for p in pred_joints_3d]
         pred_joints_3d = torch.cat(pred_joints_3d, dim=0)
+
+        gt_joints_3d = [g.to(device) for g in gt_joints_3d]
         gt_joints_3d = utils.all_gather(gt_joints_3d)
         gt_joints_3d = torch.cat(gt_joints_3d, dim=0)
+
         error = torch.sqrt(((pred_joints_3d - gt_joints_3d) ** 2).sum(dim=-1)).mean(dim=-1).detach().cpu().numpy() * 1000
         error_pa = reconstruction_error(pred_joints_3d.cpu().numpy(), gt_joints_3d.cpu().numpy(), reduction=None) * 1000
         mpjpe.append(error)
