@@ -148,12 +148,10 @@ def evaluate(model, evaluator, dataloader, device):
 
         pred_joints_3d = utils.all_gather(pred_joints_3d)
         pred_joints_3d = [p.to(device) for p in pred_joints_3d]
-        for p in pred_joints_3d:
-            print(p)
         pred_joints_3d = torch.cat(pred_joints_3d, dim=0)
 
-        gt_joints_3d = [g.to(device) for g in gt_joints_3d]
         gt_joints_3d = utils.all_gather(gt_joints_3d)
+        gt_joints_3d = [g.to(device) for g in gt_joints_3d]
         gt_joints_3d = torch.cat(gt_joints_3d, dim=0)
 
         error = torch.sqrt(((pred_joints_3d - gt_joints_3d) ** 2).sum(dim=-1)).mean(dim=-1).detach().cpu().numpy() * 1000
