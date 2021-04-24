@@ -11,13 +11,13 @@ from .surreal_dataset import SurrealDataset
 
 def create_dataset(dataset, options, **kwargs):
     dataset_setting = {
-        'all': (['h36m_train', 'lsp_orig', 'coco', 'mpii', 'up-3d'],
+        'all': (['h36m-train', 'lsp_orig', 'coco', 'mpii', 'up-3d'],
                 [.3, .1, .2, .2, .2]),
         'itw': (['lsp_orig', 'coco', 'mpii', 'up-3d'],
                 [.1, .3, .3, .3]),
         'h36m': (['h36m-train'], [1.0]),
         'up-3d': (['up-3d'], [1.0]),
-        'mesh': (['h36m_train', 'up-3d'],
+        'mesh': (['h36m-train', 'up-3d'],
                  [.7, .3]),
         'spin': (['h36m-train', 'lsp-orig', 'mpii', 'lspet', 'coco', 'mpi-inf-3dhp'],
                  [.3, .1, .15, .15, .2, .1])
