@@ -112,7 +112,11 @@ def main(options):
 
     if options.pretrain_from:
         checkpoint = torch.load(options.pretrain_from, map_location='cpu')
-        missing_keys, unexpected_keys = model_without_ddp.load_state_dict(checkpoint['model'], strict=False)
+        if 'model' in checkpoint:
+            missing_keys, unexpected_keys = model_without_ddp.load_state_dict(checkpoint['model'], strict=False)
+        else:
+            missing_keys, unexpected_keys = model_without_ddp.load_state_dict(checkpoint, strict=False)
+
         unexpected_keys = [k for k in unexpected_keys if not (k.endswith('total_params') or k.endswith('total_ops'))]
         if len(missing_keys) > 0:
             print('Missing Keys: {}'.format(missing_keys))
