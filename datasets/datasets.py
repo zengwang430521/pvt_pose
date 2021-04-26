@@ -11,9 +11,9 @@ from .surreal_dataset import SurrealDataset
 
 def create_dataset(dataset, options, **kwargs):
     dataset_setting = {
-        'all': (['h36m-train', 'lsp_orig', 'coco', 'mpii', 'up-3d'],
+        'all': (['h36m-train', 'lsp-orig', 'coco', 'mpii', 'up-3d'],
                 [.3, .1, .2, .2, .2]),
-        'itw': (['lsp_orig', 'coco', 'mpii', 'up-3d'],
+        'itw': (['lsp-orig', 'coco', 'mpii', 'up-3d'],
                 [.1, .3, .3, .3]),
         'h36m': (['h36m-train'], [1.0]),
         'up-3d': (['up-3d'], [1.0]),

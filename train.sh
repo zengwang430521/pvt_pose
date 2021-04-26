@@ -10,15 +10,21 @@ python train.py --dataset=mesh --batch_size=256 --ngpu=8 --num_workers=16 --num_
 
 
 GPUS_PER_NODE=8 ./tools/run_dist_slurm.sh pat_earth pvt_m 8 ./tools/pose.sh
---dataset=mesh --batch_size=64 --num_workers=4 --num_epochs=50 --summary_steps=100
+--dataset=mesh --batch_size=64 --num_workers=4 --num_epochs=100 --summary_steps=100
 --name=pvt_medium4 --model=pvt_medium --opt=adamw --lr=1e-4 --wd=0.05
 --pretrain_from=data/pretrained/pvt_medium.pth
 
 
+GPUS_PER_NODE=8 ./tools/run_dist_slurm.sh pat_earth pvt_m 8 ./tools/pose.sh
+--dataset=mesh --batch_size=64 --num_workers=4 --num_epochs=100 --summary_steps=100
+--name=pvt_medium5 --model=pvt_medium --opt=adamw --lr=5e-4  --lr_drop=50 --wd=0.05
+--pretrain_from=data/pretrained/pvt_medium.pth
 
 
-
-
+GPUS_PER_NODE=8 ./tools/run_dist_slurm.sh pat_earth pvt_pose 8 ./tools/pose.sh
+--dataset=all --batch_size=64 --num_workers=4 --num_epochs=100 --summary_steps=100
+--name=pvt_m_all --model=pvt_medium --opt=adamw --lr=2.5e-4 --wd=0.05
+--pretrain_from=data/pretrained/pvt_medium.pth
 
 
 
