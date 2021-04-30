@@ -213,6 +213,7 @@ class DDPTrainOptions(object):
 
         arch = self.parser.add_argument_group('Architecture')
         arch.add_argument('--model', default='pvt_tiny')
+        arch.add_argument('--pvt_alpha', type=float, default=1)
 
         arch.add_argument('--img_res', type=int, default=224,
                           help='Rescale bounding boxes to size [img_res, img_res] before feeding it in the network')

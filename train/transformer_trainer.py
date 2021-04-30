@@ -22,6 +22,7 @@ import utils.config as cfg
 from models.transformer_net import TNet
 from models.pvt import pvt_tiny, pvt_small, pvt_medium, pvt_large
 from models.my_pvt import mypvt_tiny, mypvt_small, mypvt_medium, mypvt_large
+from models.pvt_nc import pvt_nc_tiny, pvt_nc_small, pvt_nc_medium, pvt_nc_large
 from models.hmr import HMR
 from utils.vis import visualize_vert
 
@@ -31,6 +32,10 @@ model_dict = {
     'pvt_small': pvt_small,
     'pvt_medium': pvt_medium,
     'pvt_large': pvt_large,
+    'pvt_nc_tiny': pvt_nc_tiny,
+    'pvt_nc_small': pvt_nc_small,
+    'pvt_nc_medium': pvt_nc_medium,
+    'pvt_nc_large': pvt_nc_large,
     'mypvt_tiny': mypvt_tiny,
     'mypvt_small': mypvt_small,
     'mypvt_medium': mypvt_medium,

@@ -22,9 +22,27 @@ GPUS_PER_NODE=8 ./tools/run_dist_slurm.sh pat_earth pvt_m 8 ./tools/pose.sh
 
 
 GPUS_PER_NODE=8 ./tools/run_dist_slurm.sh pat_earth pvt_pose 8 ./tools/pose.sh
---dataset=all --batch_size=64 --num_workers=4 --num_epochs=100 --summary_steps=100
+--dataset=all --batch_size=64 --num_workers=4 --num_epochs=200 --summary_steps=100
 --name=pvt_m_all --model=pvt_medium --opt=adamw --lr=2.5e-4 --wd=0.05
 --pretrain_from=data/pretrained/pvt_medium.pth
+
+
+GPUS_PER_NODE=8 ./tools/run_dist_slurm.sh pat_earth pvt_pose 8 ./tools/pose.sh
+--dataset=all --batch_size=64 --num_workers=4 --num_epochs=100 --summary_steps=100
+--name=pvt_m_all_2 --model=pvt_medium --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=80
+--resume_from=logs/pvt_m_all/checkpoints/checkpoint0079.pth
+
+
+
+GPUS_PER_NODE=8 ./tools/run_dist_slurm.sh pat_earth pvt_pose 8 ./tools/pose.sh
+--dataset=all --batch_size=64 --num_workers=4 --num_epochs=200 --summary_steps=100
+--name=pvt_s_all --model=pvt_small --opt=adamw --lr=2.5e-4 --wd=0.05
+--pretrain_from=data/pretrained/pvt_small.pth
+
+GPUS_PER_NODE=8 ./tools/run_dist_slurm.sh pat_earth pvt_pose 8 ./tools/pose.sh
+--dataset=all --batch_size=64 --num_workers=4 --num_epochs=100 --lr_drop=80 --summary_steps=100
+--name=pvt_s_all_2 --model=pvt_small --opt=adamw --lr=2.5e-4 --wd=0.05
+--pretrain_from=data/pretrained/pvt_small.pth
 
 
 

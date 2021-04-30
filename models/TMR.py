@@ -8,7 +8,7 @@ from .smpl import SMPL
 def build_model(options):
     model_class = model_dict[options.model]
     if 'pvt' in options.model:
-        model = model_class()
+        model = model_class(alpha=getattr(options, 'pvt_alpha', 1))
     else:
         model = model_class(options)
     return model
