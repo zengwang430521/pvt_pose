@@ -212,8 +212,11 @@ class DDPTrainOptions(object):
         io.add_argument('--pretrained_checkpoint', default=None, help='Load a pretrained network when starting training')
 
         arch = self.parser.add_argument_group('Architecture')
+
         arch.add_argument('--model', default='pvt_tiny')
         arch.add_argument('--pvt_alpha', type=float, default=1)
+
+
 
         arch.add_argument('--img_res', type=int, default=224,
                           help='Rescale bounding boxes to size [img_res, img_res] before feeding it in the network')
@@ -232,7 +235,7 @@ class DDPTrainOptions(object):
 
 
 
-        # * DDP
+        # * DDP and PVT
         parser = self.parser.add_argument_group('Transformer')
         parser.add_argument('--use_renderer', action='store_true')
         parser.add_argument('--seed', default=42, type=int)
@@ -251,6 +254,11 @@ class DDPTrainOptions(object):
         # # Optimizer parameters
         parser.add_argument('--opt', default='adamw', type=str, metavar='OPTIMIZER',
                             help='Optimizer (default: "adamw"')
+
+        parser.add_argument('--drop', type=float, default=0.0, metavar='PCT',
+                            help='Dropout rate (default: 0.)')
+        parser.add_argument('--drop-path', type=float, default=0.1, metavar='PCT',
+                            help='Drop path rate (default: 0.1)')
 
         # parser.add_argument('--opt-eps', default=1e-8, type=float, metavar='EPSILON',
         #                     help='Optimizer Epsilon (default: 1e-8)')

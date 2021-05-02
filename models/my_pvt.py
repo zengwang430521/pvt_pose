@@ -20,7 +20,7 @@ __all__ = [
 
 
 class MyAttention(nn.Module):
-    def __init__(self, dim, dim_out=-1, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0.):
+    def __init__(self, dim, dim_out=-1, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0., sr_ratio=1):
         super().__init__()
         if dim_out < 0:
             dim_out = dim
@@ -40,10 +40,21 @@ class MyAttention(nn.Module):
         self.proj = nn.Linear(dim_out, dim_out)
         self.proj_drop = nn.Dropout(proj_drop)
 
-    def forward(self, x, x_source):
+        self.sr_ratio = sr_ratio
+        if sr_ratio > 1:
+            self.sr = nn.Conv2d(dim, dim, kernel_size=sr_ratio, stride=sr_ratio)
+            self.norm = nn.LayerNorm(dim)
+
+    def forward(self, x, x_source, H, W):
         B, N, C = x.shape
-        _, Ns, _ = x_source.shape
         q = self.q(x).reshape(B, N, self.num_heads, self.dim_out // self.num_heads).permute(0, 2, 1, 3)
+
+        if self.sr_ratio > 1:
+            x_source = x_source.permute(0, 2, 1).reshape(B, C, H, W)
+            x_source = self.sr(x_source).reshape(B, C, -1).permute(0, 2, 1)
+            x_source = self.norm(x_source)
+        _, Ns, _ = x_source.shape
+
         k = self.k(x_source).reshape(B, Ns, self.num_heads, self.dim_out // self.num_heads).permute(0, 2, 1, 3)
         v = self.v(x_source).reshape(B, Ns, self.num_heads, self.dim_out // self.num_heads).permute(0, 2, 1, 3)
         # kv = self.kv(x_source).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
@@ -62,7 +73,7 @@ class MyAttention(nn.Module):
 class MyBlock(nn.Module):
 
     def __init__(self, dim, num_heads, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop=0., attn_drop=0.,
-                 drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, dim_out=None):
+                 drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, dim_out=None, sr_ratio=1, alpha=1):
         super().__init__()
         if dim_out is None:
             dim_out = dim
@@ -71,7 +82,7 @@ class MyBlock(nn.Module):
             dim,
             dim_out=dim_out,
             num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale,
-            attn_drop=attn_drop, proj_drop=drop)
+            attn_drop=attn_drop, proj_drop=drop, sr_ratio=sr_ratio)
         # NOTE: drop path for stochastic depth, we shall see if this is better than dropout here
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         self.norm2 = norm_layer(dim_out)
@@ -81,14 +92,15 @@ class MyBlock(nn.Module):
         if dim_out != dim:
             self.use_fc = True
             self.fc = nn.Linear(dim, dim_out)
+        self.alpha = alpha
 
-    def forward(self, x, x_source):
+    def forward(self, x, x_source, H, W):
         if self.use_fc:
-            x = self.fc(x) + self.drop_path(self.attn(self.norm1(x), self.norm1(x_source)))
+            x = self.fc(x) + self.drop_path(self.attn(self.norm1(x), self.norm1(x_source), H, W)) * self.alpha
         else:
-            x = x + self.drop_path(self.attn(self.norm1(x), self.norm1(x_source)))
+            x = x + self.drop_path(self.attn(self.norm1(x), self.norm1(x_source), H, W)) * self.alpha
 
-        x = x + self.drop_path(self.mlp(self.norm2(x)))
+        x = x + self.drop_path(self.mlp(self.norm2(x))) * self.alpha
         return x
 
 
@@ -103,7 +115,7 @@ class DownLayer(nn.Module):
         self.block = down_block
         self.pos_drop = nn.Dropout(p=drop_rate)
 
-    def forward(self, x, pos, pos_embed):
+    def forward(self, x, pos, pos_embed, H, W):
         B, N, C = x.shape
         assert self.sample_num <= N
         # FIXME: Should we add position embedding before or after down sampling ?
@@ -121,7 +133,7 @@ class DownLayer(nn.Module):
         x_down = torch.gather(x, 1, index_down.expand([B, self.sample_num, C]))
         pos_down = torch.gather(pos, 1, index_down.squeeze(-1))
         x_down, pos_down = x_down.contiguous(), pos_down.contiguous()
-        x_down = self.block(x_down, x)
+        x_down = self.block(x_down, x, H, W)
 
         pos_feature = torch.index_select(pos_embed, 1, pos_down.reshape(-1))
         pos_feature = pos_feature.reshape(B, self.sample_num, -1)
@@ -135,10 +147,11 @@ class MyPyramidVisionTransformer(nn.Module):
     def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dims=[64, 128, 256, 512],
                  num_heads=[1, 2, 4, 8], mlp_ratios=[4, 4, 4, 4], qkv_bias=False, qk_scale=None, drop_rate=0.,
                  attn_drop_rate=0., drop_path_rate=0., norm_layer=nn.LayerNorm,
-                 depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1]):
+                 depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1], alpha=1):
         super().__init__()
         self.num_classes = num_classes
         self.depths = depths
+        self.alpha = alpha
 
         # patch_embed
         self.patch_embed1 = PatchEmbed(img_size=img_size, patch_size=patch_size, in_chans=in_chans,
@@ -154,49 +167,58 @@ class MyPyramidVisionTransformer(nn.Module):
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]  # stochastic depth decay rule
         sample_num = self.patch_embed1.num_patches
         cur = 0
+
+        # stage 1
         self.block1 = nn.ModuleList([Block(
             dim=embed_dims[0], num_heads=num_heads[0], mlp_ratio=mlp_ratios[0], qkv_bias=qkv_bias, qk_scale=qk_scale,
             drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur + i], norm_layer=norm_layer,
-            sr_ratio=sr_ratios[0])
+            sr_ratio=sr_ratios[0], alpha=alpha)
             for i in range(depths[0])])
         cur += depths[0]
 
+        # stage 2
         sample_num = sample_num // 4
-        self.down_layers2 = DownLayer(sample_num=sample_num, embed_dim=embed_dims[0], drop_rate=drop_rate,
+        self.down_layers1 = DownLayer(sample_num=sample_num, embed_dim=embed_dims[0], drop_rate=drop_rate,
                                       down_block=MyBlock(
                                             dim=embed_dims[0], dim_out=embed_dims[1], num_heads=num_heads[1],
                                             mlp_ratio=mlp_ratios[1], qkv_bias=qkv_bias, qk_scale=qk_scale,
                                             drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur],
-                                            norm_layer=norm_layer))
+                                            norm_layer=norm_layer, sr_ratio=sr_ratios[0], alpha=alpha))
+
         self.block2 = nn.ModuleList([MyBlock(
             dim=embed_dims[1], num_heads=num_heads[1], mlp_ratio=mlp_ratios[1], qkv_bias=qkv_bias, qk_scale=qk_scale,
-            drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur + i], norm_layer=norm_layer)
+            drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur + i], norm_layer=norm_layer,
+            sr_ratio=sr_ratios[1], alpha=alpha)
             for i in range(1, depths[1])])
         cur += depths[1]
 
+        # stage 3
         sample_num = sample_num // 4
-        self.down_layers3 = DownLayer(sample_num=sample_num, embed_dim=embed_dims[1], drop_rate=drop_rate,
+        self.down_layers2 = DownLayer(sample_num=sample_num, embed_dim=embed_dims[1], drop_rate=drop_rate,
                                       down_block=MyBlock(
                                             dim=embed_dims[1], dim_out=embed_dims[2], num_heads=num_heads[2],
                                             mlp_ratio=mlp_ratios[2], qkv_bias=qkv_bias, qk_scale=qk_scale,
                                             drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur],
-                                            norm_layer=norm_layer))
+                                            norm_layer=norm_layer, sr_ratio=sr_ratios[1], alpha=alpha))
         self.block3 = nn.ModuleList([MyBlock(
             dim=embed_dims[2], num_heads=num_heads[2], mlp_ratio=mlp_ratios[2], qkv_bias=qkv_bias, qk_scale=qk_scale,
-            drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur + i], norm_layer=norm_layer)
+            drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur + i], norm_layer=norm_layer,
+            sr_ratio=sr_ratios[2], alpha=alpha)
             for i in range(1, depths[2])])
         cur += depths[2]
 
+        # stage 4
         sample_num = sample_num // 4
-        self.down_layers4 = DownLayer(sample_num=sample_num, embed_dim=embed_dims[2], drop_rate=drop_rate,
+        self.down_layers3 = DownLayer(sample_num=sample_num, embed_dim=embed_dims[2], drop_rate=drop_rate,
                                       down_block=MyBlock(
                                             dim=embed_dims[2], dim_out=embed_dims[3], num_heads=num_heads[3],
                                             mlp_ratio=mlp_ratios[3], qkv_bias=qkv_bias, qk_scale=qk_scale,
                                             drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur],
-                                            norm_layer=norm_layer))
+                                            norm_layer=norm_layer, sr_ratio=sr_ratios[2], alpha=alpha))
         self.block4 = nn.ModuleList([MyBlock(
             dim=embed_dims[3], num_heads=num_heads[3], mlp_ratio=mlp_ratios[3], qkv_bias=qkv_bias, qk_scale=qk_scale,
-            drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur + i], norm_layer=norm_layer)
+            drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur + i], norm_layer=norm_layer,
+            sr_ratio=sr_ratios[3], alpha=alpha)
             for i in range(1, depths[3])])
         self.norm = norm_layer(embed_dims[3])
 
@@ -279,21 +301,24 @@ class MyPyramidVisionTransformer(nn.Module):
 
         # stage 2
         pos = torch.arange(x.shape[1], dtype=torch.long, device=x.device)[None, :].repeat([B, 1])
-        x, pos = self.down_layers2(x, pos, self.pos_embed2)     # down sample
+        x, pos = self.down_layers1(x, pos, self.pos_embed2, H, W)     # down sample
+        H, W = H // 2, W // 2
         for blk in self.block2:
-            x = blk(x, x)
+            x = blk(x, x, H, W)
 
         # stage 3
-        x, pos = self.down_layers3(x, pos, self.pos_embed3)     # down sample
+        x, pos = self.down_layers2(x, pos, self.pos_embed3, H, W)     # down sample
+        H, W = H // 2, W // 2
         for blk in self.block3:
-            x = blk(x, x)
+            x = blk(x, x, H, W)
 
         # stage 4
-        x, pos = self.down_layers4(x, pos, self.pos_embed4)     # down sample
+        x, pos = self.down_layers3(x, pos, self.pos_embed4, H, W)     # down sample
+        H, W = H // 2, W // 2
         cls_tokens = self.cls_token.expand(B, -1, -1)
         x = torch.cat((cls_tokens, x), dim=1)
         for blk in self.block4:
-            x = blk(x, x)
+            x = blk(x, x, H, W)
         x = self.norm(x)
         return x[:, 0]
 
