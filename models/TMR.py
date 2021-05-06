@@ -12,7 +12,7 @@ def build_model(options):
             pretrained=False,
             drop_rate=0.0,
             drop_path_rate=0.1,
-            drop_block_rate=None,
+            # drop_block_rate=None,
             alpha=getattr(options, 'pvt_alpha', 1)
         )
 

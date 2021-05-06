@@ -184,6 +184,47 @@ class PyramidVisionTransformerNC(nn.Module):
         return x
 
 
+class PVTNC2(PyramidVisionTransformerNC):
+
+    def forward_features(self, x):
+        B = x.shape[0]
+
+        # stage 1
+        x, (H, W) = self.patch_embed1(x)
+        x = x + self.pos_embed1
+        x = self.pos_drop1(x)
+        for blk in self.block1:
+            x = blk(x, H, W)
+        x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
+
+        # stage 2
+        x, (H, W) = self.patch_embed2(x)
+        x = x + self.pos_embed2
+        x = self.pos_drop2(x)
+        for blk in self.block2:
+            x = blk(x, H, W)
+        x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
+
+        # stage 3
+        x, (H, W) = self.patch_embed3(x)
+        x = x + self.pos_embed3
+        x = self.pos_drop3(x)
+        for blk in self.block3:
+            x = blk(x, H, W)
+        x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
+
+        # stage 4
+        x, (H, W) = self.patch_embed4(x)
+        x = x + self.pos_embed4[:, 1:]
+        x = self.pos_drop4(x)
+        for blk in self.block4:
+            x = blk(x, H, W)
+
+        x = self.norm(x)
+        x = x.mean(dim=1)
+        return x
+
+
 def pvt_nc_tiny(pretrained=False, **kwargs):
     model = PyramidVisionTransformerNC(
         patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
@@ -247,4 +288,12 @@ def pvt_nc_large(pretrained=False, **kwargs):
     #     )
     #     model.load_state_dict(checkpoint["model"])
 
+    return model
+
+
+def pvt_nc2_small(pretrained=False, **kwargs):
+    model = PVTNC2(
+        patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1], **kwargs)
+    model.default_cfg = _cfg()
     return model
