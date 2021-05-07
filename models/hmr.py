@@ -6,7 +6,7 @@ from .smpl_head import HMRHead
 
 class HMR(nn.Module):
 
-    def __init__(self, options):
+    def __init__(self, options=None):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.options = options

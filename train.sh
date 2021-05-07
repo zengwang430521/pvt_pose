@@ -52,13 +52,15 @@ GPUS_PER_NODE=8 ./tools/run_dist_slurm.sh pat_earth pvt_pose 8 ./tools/pose.sh
 --pretrain_from=data/pretrained/pvt_small.pth
 --resume_from=logs/pvts_all2/checkpoints/checkpoint0099.pth
 
+
 GPUS_PER_NODE=8 ./tools/run_dist_slurm.sh pat_earth pvt_pose 8 ./tools/pose.sh
---dataset=all --batch_size=64 --num_workers=4 --num_epochs=100 --summary_steps=100
+--dataset=all --batch_size=64 --num_workers=4 --num_epochs=200 --summary_steps=100
 --name=pvtsnc_all1 --model=pvt_nc_small --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=150
 --pretrain_from=data/pretrained/pvt_small.pth --pvt_alpha=1
 
 
+
 GPUS_PER_NODE=8 ./tools/run_dist_slurm.sh pat_earth pvt_pose 8 ./tools/pose.sh
---dataset=all --batch_size=64 --num_workers=4 --num_epochs=100 --summary_steps=100
---name=mypvts_all --model=mypvt_small --opt=adamw --lr=2.5e-4 --wd=0.05
+--dataset=all --batch_size=64 --num_workers=4 --num_epochs=200 --summary_steps=100
+--name=pvtsnc2_all1 --model=pvt_nc2_small --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=150
 --pretrain_from=data/pretrained/pvt_small.pth --pvt_alpha=1
