@@ -70,3 +70,9 @@ GPUS_PER_NODE=8 ./tools/run_dist_slurm.sh pat_earth pvt_pose 8 ./tools/pose.sh
 --dataset=all --batch_size=64 --num_workers=4 --num_epochs=150 --summary_steps=100
 --name=pvt2048_small --model=pvt2048_small --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=100
 --pretrain_from=data/pretrained/pvt_small.pth --pvt_alpha=1
+
+
+GPUS_PER_NODE=8 ./tools/run_dist_slurm.sh pat_earth pvt_pose 8 ./tools/pose.sh
+--dataset=all --batch_size=64 --num_workers=4 --num_epochs=200 --summary_steps=100
+--name=pvts_all3 --model=pvt_small --opt=adamw --lr=2.5e-3 --wd=0.05 --lr_drop=100 --backbone_lr=0.1
+--pretrain_from=data/pretrained/pvt_small.pth
