@@ -134,10 +134,13 @@ def evaluate(model, evaluator, dataloader, device):
     metric_logger.add_meter('MPJPE', utils.SmoothedValue(window_size=1, fmt='{global_avg:.2f}'))
     metric_logger.add_meter('MPJPE_PA', utils.SmoothedValue(window_size=1, fmt='{global_avg:.2f}'))
     metric_logger.add_meter('MPJPE_scale', utils.SmoothedValue(window_size=1, fmt='{global_avg:.2f}'))
+    metric_logger.add_meter('MPJPE_rot', utils.SmoothedValue(window_size=1, fmt='{global_avg:.2f}'))
+    metric_logger.add_meter('MPJPE_tran', utils.SmoothedValue(window_size=1, fmt='{global_avg:.2f}'))
+
     header = 'Test:'
     mpjpe = []
     mpjpe_pa = []
-    mpjpe_scale = []
+    mpjpe_scale, mpjpe_rot, mpjpe_tran = [], [], []
 
     print_freq = 20
     data_iter = iter(dataloader)
@@ -159,15 +162,25 @@ def evaluate(model, evaluator, dataloader, device):
         error = torch.sqrt(((pred_joints_3d - gt_joints_3d) ** 2).sum(dim=-1)).mean(dim=-1).detach().cpu().numpy() * 1000
         error_pa = reconstruction_error(pred_joints_3d.cpu().numpy(), gt_joints_3d.cpu().numpy(), reduction=None) * 1000
         error_scale = reconstruction_error(pred_joints_3d.cpu().numpy(), gt_joints_3d.cpu().numpy(), reduction=None, skip=['rot', 'tran']) * 1000
+        error_rot = reconstruction_error(pred_joints_3d.cpu().numpy(), gt_joints_3d.cpu().numpy(), reduction=None, skip=['scale', 'tran']) * 1000
+        error_tran = reconstruction_error(pred_joints_3d.cpu().numpy(), gt_joints_3d.cpu().numpy(), reduction=None, skip=['scale', 'rot']) * 1000
 
         mpjpe.append(error)
         mpjpe_pa.append(error_pa)
         mpjpe_scale.append(error_scale)
+        mpjpe_rot.append(error_rot)
+        mpjpe_tran.append(error_tran)
 
         metric_logger.update(MPJPE=float(error.mean()),
                              MPJPE_PA=float(error_pa.mean()),
-                             MPJPE_scale=float(error_scale.mean()))
+                             MPJPE_scale=float(error_scale.mean()),
+                             MPJPE_rot=float(error_rot.mean()),
+                             MPJPE_tran=float(error_tran.mean()),
+                             )
     stats = dict(MPJPE=float(np.concatenate(mpjpe, axis=0).mean()),
                  MPJPE_PA=float(np.concatenate(mpjpe_pa, axis=0).mean()),
-                 MPJPE_scale=float(np.concatenate(mpjpe_scale, axis=0).mean()))
+                 MPJPE_scale=float(np.concatenate(mpjpe_scale, axis=0).mean()),
+                 MPJPE_rot=float(np.concatenate(mpjpe_rot, axis=0).mean()),
+                 MPJPE_tran=float(np.concatenate(mpjpe_tran, axis=0).mean()),
+                 )
     return stats
