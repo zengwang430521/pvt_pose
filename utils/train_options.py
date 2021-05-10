@@ -254,6 +254,7 @@ class DDPTrainOptions(object):
         # # Optimizer parameters
         parser.add_argument('--opt', default='adamw', type=str, metavar='OPTIMIZER',
                             help='Optimizer (default: "adamw"')
+        parser.add_argument('--backbone_lr', default=1.0, type=float)
 
         parser.add_argument('--drop', type=float, default=0.0, metavar='PCT',
                             help='Dropout rate (default: 0.)')

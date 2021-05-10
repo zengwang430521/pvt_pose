@@ -24,15 +24,26 @@ from utils.train_options import DDPTrainOptions
 from tensorboardX import SummaryWriter
 # from timm.scheduler import create_scheduler
 # from timm.optim import create_optimizer
+from mmcv.runner import build_optimizer as mmcv_build_optimizer
 
 
 def build_optimizer(model, options):
     if options.opt == 'adamw':
-        optimizer = torch.optim.AdamW(
-            params=list(model.parameters()),
-            lr=options.lr,
-            betas=(options.adam_beta1, 0.999),
-            weight_decay=options.wd)
+        if options.backbone_lr == 1:
+            optimizer = torch.optim.AdamW(
+                params=list(model.parameters()),
+                lr=options.lr,
+                betas=(options.adam_beta1, 0.999),
+                weight_decay=options.wd)
+        else:
+            optimizer_cfg = dict(
+                type='AdamW',
+                lr=options.lr,
+                weight_decay=options.wd,
+                paramwise_cfg=dict(
+                    custom_keys={'backbone': dict(lr_mult=options.backbone_lr, decay_mult=1.0)}))
+            optimizer = mmcv_build_optimizer(model, optimizer_cfg)
+
     else:
         optimizer = torch.optim.Adam(
             params=list(model.parameters()),
