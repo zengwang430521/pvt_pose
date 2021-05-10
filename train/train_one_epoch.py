@@ -133,9 +133,11 @@ def evaluate(model, evaluator, dataloader, device):
     metric_logger = utils.MetricLogger(delimiter="  ")
     metric_logger.add_meter('MPJPE', utils.SmoothedValue(window_size=1, fmt='{global_avg:.2f}'))
     metric_logger.add_meter('MPJPE_PA', utils.SmoothedValue(window_size=1, fmt='{global_avg:.2f}'))
+    metric_logger.add_meter('MPJPE_scale', utils.SmoothedValue(window_size=1, fmt='{global_avg:.2f}'))
     header = 'Test:'
     mpjpe = []
     mpjpe_pa = []
+    mpjpe_scale = []
 
     print_freq = 20
     data_iter = iter(dataloader)
@@ -156,11 +158,16 @@ def evaluate(model, evaluator, dataloader, device):
 
         error = torch.sqrt(((pred_joints_3d - gt_joints_3d) ** 2).sum(dim=-1)).mean(dim=-1).detach().cpu().numpy() * 1000
         error_pa = reconstruction_error(pred_joints_3d.cpu().numpy(), gt_joints_3d.cpu().numpy(), reduction=None) * 1000
+        error_scale = reconstruction_error(pred_joints_3d.cpu().numpy(), gt_joints_3d.cpu().numpy(), reduction=None, skip=['rot', 'tran']) * 1000
+
         mpjpe.append(error)
         mpjpe_pa.append(error_pa)
+        mpjpe_scale.append(error_scale)
 
         metric_logger.update(MPJPE=float(error.mean()),
-                             MPJPE_PA=float(error_pa.mean()))
+                             MPJPE_PA=float(error_pa.mean()),
+                             MPJPE_scale=float(error_scale.mean()))
     stats = dict(MPJPE=float(np.concatenate(mpjpe, axis=0).mean()),
-                 MPJPE_PA=float(np.concatenate(mpjpe_pa, axis=0).mean()))
+                 MPJPE_PA=float(np.concatenate(mpjpe_pa, axis=0).mean()),
+                 MPJPE_scale=float(np.concatenate(mpjpe_scale, axis=0).mean()))
     return stats

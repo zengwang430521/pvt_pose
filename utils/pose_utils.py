@@ -6,7 +6,7 @@ from __future__ import division
 from __future__ import print_function
 import numpy as np
 
-def compute_similarity_transform(S1, S2):
+def compute_similarity_transform(S1, S2, skip=[]):
     """Computes a similarity transform (sR, t) that takes
     a set of 3D points S1 (3 x N) closest to a set of 3D points S2,
     where R is an 3x3 rotation matrix, t 3x1 translation, s scale.
@@ -48,6 +48,13 @@ def compute_similarity_transform(S1, S2):
     t = mu2 - scale*(R.dot(mu1))
 
     # 7. Error:
+    if 'scale' in skip:
+        scale = 1
+    if 'tran' in skip:
+        t = t * 0
+    if 'rot' in skip:
+        R = np.eye(3)
+
     S1_hat = scale*R.dot(S1) + t
 
     if transposed:
@@ -56,21 +63,21 @@ def compute_similarity_transform(S1, S2):
     return S1_hat
 
 
-def compute_similarity_transform_batch(S1, S2):
+def compute_similarity_transform_batch(S1, S2, skip=[]):
     """Batched version of compute_similarity_transform."""
     S1_hat = np.zeros_like(S1)
     for i in range(S1.shape[0]):
-        S1_hat[i] = compute_similarity_transform(S1[i], S2[i])
+        S1_hat[i] = compute_similarity_transform(S1[i], S2[i], skip=skip)
     return S1_hat
 
 
-def reconstruction_error(S1, S2, reduction='mean'):
+def reconstruction_error(S1, S2, reduction='mean', skip=[]):
     """Do Procrustes alignment and compute reconstruction error."""
-    S1_hat = compute_similarity_transform_batch(S1, S2)
+    S1_hat = compute_similarity_transform_batch(S1, S2, skip=skip)
     re = np.sqrt( ((S1_hat - S2)** 2).sum(axis=-1)).mean(axis=-1)
     if reduction == 'mean':
         re = re.mean()
     elif reduction == 'sum':
         re = re.sum()
     return re
-             
+
