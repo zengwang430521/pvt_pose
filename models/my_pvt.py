@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from functools import partial
 
-from .pvt import ( Mlp, Attention, PatchEmbed, Block, DropPath, to_2tuple, trunc_normal_,register_model, _cfg)
-from .smpl_head import HMRHead
+from models.pvt import ( Mlp, Attention, PatchEmbed, Block, DropPath, to_2tuple, trunc_normal_,register_model, _cfg)
+from models.smpl_head import HMRHead
 import utils.config as cfg
 
 
@@ -342,12 +342,6 @@ def mypvt_small_2(pretrained=False, **kwargs):
     return model
 
 
-
-
-
-
-
-
 class MyAttention2(nn.Module):
     def __init__(self, dim, dim_out=-1, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0., sr_ratio=1):
         super().__init__()
@@ -380,14 +374,19 @@ class MyAttention2(nn.Module):
             self.sr = nn.Conv2d(dim, dim, kernel_size=sr_ratio, stride=sr_ratio)
             self.norm = nn.LayerNorm(dim)
 
-    def forward_grid(self, x, x_source, H, W):
+    def forward_grid(self, x, x_source, conf):
         B, N, C = x.shape
         q = self.q(x).reshape(B, N, self.num_heads, self.dim_out // self.num_heads).permute(0, 2, 1, 3)
 
         _, Ns, _ = x_source.shape
 
+        if conf[1] is not None:
+            conf = torch.cat(conf, dim=1)
+            x_source = x_source * conf
+
         k = self.k(x_source).reshape(B, Ns, self.num_heads, self.dim_out // self.num_heads).permute(0, 2, 1, 3)
         v = self.v(x_source).reshape(B, Ns, self.num_heads, self.dim_out // self.num_heads).permute(0, 2, 1, 3)
+
         # kv = self.kv(x_source).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
         # k, v = kv[0], kv[1]
 
@@ -400,7 +399,7 @@ class MyAttention2(nn.Module):
         x = self.proj_drop(x)
         return x
 
-    def forward_ada(self, x, x_source, H, W):
+    def forward_ada(self, x, x_source):
         B, N, C = x.shape
         q = self.q(x).reshape(B, N, self.num_heads, self.dim_out // self.num_heads).permute(0, 2, 1, 3)
 
@@ -426,14 +425,14 @@ class MyAttention2(nn.Module):
     x_ada: Feature of ada location.
     x_sourceL Tuple of 2 tensor, the same as x.
     '''
-    def forward(self, x, x_source):
+    def forward(self, x, x_source, conf=(None, None)):
         x_grid, x_ada = x
         # merge grid and ada nodes in x_source
         x_source = torch.cat(x_source, dim=1)
         # gather feature into x_grid
-        x_grid = self.forward_grid(x_grid, x_source, 1, 1)
+        x_grid = self.forward_grid(x_grid, x_source, conf)
         # get feature from new x_grid
-        x_ada = self.forward_ada(x_ada, x_grid, 1, 1)
+        x_ada = self.forward_ada(x_ada, x_grid)
         return (x_grid, x_ada)
 
 
@@ -479,9 +478,10 @@ class MyBlock2(nn.Module):
             self.fc = nn.Linear(dim, dim_out)
         self.alpha = alpha
 
-    def forward(self, x, x_source, H=1, W=1):
+    def forward(self, x, x_source, conf=(None, None)):
         y = self.attn(tuple_forward(self.norm1, x),
-                      tuple_forward(self.norm1, x_source))
+                      tuple_forward(self.norm1, x_source),
+                      conf)
         y = tuple_forward(self.drop_path, y)
         y = tuple_times(y, self.alpha)
         if self.use_fc:
@@ -515,7 +515,7 @@ class DownLayer2(nn.Module):
         self.block = down_block
         self.pos_drop = nn.Dropout(p=drop_rate)
 
-    def forward(self, x, pos, pos_embed, H=1, W=1):
+    def forward(self, x, pos, pos_embed):
         x_grid, x_ada = x
         pos_grid, pos_ada = pos
         B, N_g, C = x_grid.shape
@@ -531,8 +531,9 @@ class DownLayer2(nn.Module):
         pos_down = torch.gather(pos_ada, 1, index_down.squeeze(-1))
         x_down, pos_down = x_down.contiguous(), pos_down.contiguous()
 
-        x_ada = x_ada * conf
-        x = self.block((x_grid, x_down), (x_grid, x_ada))
+        x = self.block((x_grid, x_down), (x_grid, x_ada),
+                       conf=(conf.new_ones(B, N_g, 1), conf))
+
         pos_feature = (torch.index_select(pos_embed, 1, pos_grid.reshape(-1)).reshape(B, N_g, -1),
                        torch.index_select(pos_embed, 1, pos_down.reshape(-1)).reshape(B, self.sample_num, -1))
         x = tuple_add(x, pos_feature)
@@ -627,9 +628,8 @@ class MyPVT2(nn.Module):
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dims[3]))
 
         # classification head
-        self.head = nn.Linear(embed_dims[3], num_classes) if num_classes > 0 else nn.Identity()
+        # self.head = nn.Linear(embed_dims[3], num_classes) if num_classes > 0 else nn.Identity()
         self.head = HMRHead(embed_dims[3], cfg.SMPL_MEAN_PARAMS, 3)
-
 
         # init weights
         trunc_normal_(self.pos_embed1, std=.02)
@@ -726,25 +726,22 @@ class MyPVT2(nn.Module):
         pos_ada = pos_ada[None, :].repeat([B, 1])
         pos = (pos_grid, pos_ada)
 
-        x, pos = self.down_layers1(x, pos, self.pos_embed2, H, W)     # down sample
-        H, W = H // 2, W // 2
+        x, pos = self.down_layers1(x, pos, self.pos_embed2)     # down sample
         for blk in self.block2:
-            x = blk(x, x, H, W)
+            x = blk(x, x)
 
         # stage 3
-        x, pos = self.down_layers2(x, pos, self.pos_embed3, H, W)     # down sample
-        H, W = H // 2, W // 2
+        x, pos = self.down_layers2(x, pos, self.pos_embed3)     # down sample
         for blk in self.block3:
-            x = blk(x, x, H, W)
+            x = blk(x, x)
 
         # stage 4
-        x, pos = self.down_layers3(x, pos, self.pos_embed4, H, W)     # down sample
-        H, W = H // 2, W // 2
+        x, pos = self.down_layers3(x, pos, self.pos_embed4)     # down sample
         cls_tokens = self.cls_token.expand(B, -1, -1)
         x = (torch.cat((cls_tokens, x[0]), dim=1), x[1])
 
         for blk in self.block4:
-            x = blk(x, x, H, W)
+            x = blk(x, x)
         x_grid = x[0]
         x_grid = self.norm(x_grid)
         return x_grid[:, 0]
