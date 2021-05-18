@@ -8,13 +8,22 @@ from .smpl import SMPL
 def build_model(options):
     model_class = model_dict[options.model]
     if 'pvt' in options.model:
-        model = model_class(
-            pretrained=False,
-            drop_rate=0.0,
-            drop_path_rate=0.1,
-            # drop_block_rate=None,
-            alpha=getattr(options, 'pvt_alpha', 1)
-        )
+        if 'impr' in options.model:
+            model = model_class(
+                pretrained=False,
+                drop_rate=0.0,
+                drop_path_rate=0.1,
+                # drop_block_rate=None,
+            )
+        else:
+            model = model_class(
+                pretrained=False,
+                drop_rate=0.0,
+                drop_path_rate=0.1,
+                # drop_block_rate=None,
+                alpha=getattr(options, 'pvt_alpha', 1)
+            )
+
 
     else:
         model = model_class(options)
