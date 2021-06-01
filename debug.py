@@ -1,12 +1,14 @@
 from models.pvt import pvt_tiny, pvt_small, pvt2048_small
 from models.hmr import HMR
 from models.pvt_impr1 import pvt_small_impr1_peg
+from models.my_pvt9 import mypvt9_small
 import torch
 
 # model = pvt_small()
 # model = HMR()
 # model = pvt2048_small()
-model = pvt_small_impr1_peg()
+# model = pvt_small_impr1_peg()
+model = mypvt9_small()
 img = torch.zeros([1, 3, 224, 224])
 out = model(img)
 t = 0
