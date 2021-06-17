@@ -27,6 +27,8 @@ from models.pvt_impr1 import pvt_small_impr1_peg
 from models.hmr import HMR
 from utils.vis import visualize_vert
 from models.my_pvt9 import mypvt9_small
+from models.my_pvt14_3 import mypvt14_3_small
+
 
 model_dict = {
     'TMR': TNet,
@@ -44,7 +46,7 @@ model_dict = {
 
     'mypvt2_small': mypvt2_small,
     'mypvt9_small': mypvt9_small,
-
+    'mypvt14_3_small': mypvt14_3_small,
     'pvt_small_impr1_peg': pvt_small_impr1_peg,
 
 }
