@@ -202,6 +202,9 @@ def main(options):
                     'iter_num': summary_writer.iter_num,
                 }, checkpoint_path, _use_new_zipfile_serialization=False)
 
+                checkpoint_link = checkpoint_path[:-8] + '_latest.pth'
+                os.symlink(checkpoint_path, checkpoint_link)
+
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                      'epoch': epoch,
                      'n_parameters': n_parameters}
