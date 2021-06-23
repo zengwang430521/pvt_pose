@@ -192,6 +192,16 @@ def main(options):
         lr_scheduler.step()
 
         if options.log_dir and utils.is_main_process():
+            checkpoint_latest = log_dir / f'checkpoints/checkpoint_latest.pth'
+            utils.save_on_master({
+                'model': model_without_ddp.state_dict(),
+                'optimizer': optimizer.state_dict(),
+                'lr_scheduler': lr_scheduler.state_dict(),
+                'epoch': epoch,
+                'options': options,
+                'iter_num': summary_writer.iter_num,
+            }, checkpoint_latest, _use_new_zipfile_serialization=False)
+
             if (epoch + 1) % options.save_freq == 0:
                 if not os.path.exists(options.log_dir):
                     os.makedirs(options.log_dir, exist_ok=True)
@@ -205,8 +215,7 @@ def main(options):
                     'iter_num': summary_writer.iter_num,
                 }, checkpoint_path, _use_new_zipfile_serialization=False)
 
-                checkpoint_link = checkpoint_path[:-8] + '_latest.pth'
-                os.symlink(checkpoint_path, checkpoint_link)
+
 
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                      'epoch': epoch,
