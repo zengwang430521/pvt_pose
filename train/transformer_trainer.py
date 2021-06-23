@@ -28,6 +28,7 @@ from models.hmr import HMR
 from utils.vis import visualize_vert
 from models.my_pvt9 import mypvt9_small
 from models.my_pvt14_3 import mypvt14_3_small
+from models.pvt_impr8 import pvt_small_impr8_peg
 
 
 model_dict = {
@@ -48,6 +49,7 @@ model_dict = {
     'mypvt9_small': mypvt9_small,
     'mypvt14_3_small': mypvt14_3_small,
     'pvt_small_impr1_peg': pvt_small_impr1_peg,
+    'pvt_small_impr8_peg': pvt_small_impr8_peg,
 
 }
 
