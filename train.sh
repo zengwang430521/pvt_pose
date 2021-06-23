@@ -133,7 +133,8 @@ spring.submit arun \
     -n 8 --gpu \
     --job-name=mesh \
     --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 \
-    "python -u main.py --dataset=all --batch_size=64 --num_workers=4 --num_epochs=150 --summary_steps=100 \
+    "python -u main.py --dataset=all --batch_size=64 --num_workers=4 --num_epochs=100 --summary_steps=100 \
     --name=p2_all_300 --model=pvt_small_impr8_peg --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=100 \
-    --pretrain_from=data/pretrained/pvt_small_impr8_peg.pth"
+    --pretrain_from=data/pretrained/pvt_small_impr8_peg.pth \
+    --resume_from=logs/p2_all_300/checkpoint/checkpoint_latest.pth --save_freq=1"
 
