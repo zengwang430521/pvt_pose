@@ -376,9 +376,7 @@ def _conv_filter(state_dict, patch_size=16):
 def pvt_small_impr8_peg(pretrained=False, **kwargs):
     model = PyramidVisionTransformerImpr(
         patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
-        drop_rate=0.0, drop_path_rate=0.1,
-        **kwargs)
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],  **kwargs)
     model.default_cfg = _cfg()
 
     return model
