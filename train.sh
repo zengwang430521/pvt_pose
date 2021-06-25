@@ -126,6 +126,23 @@ GPUS_PER_NODE=8 ./tools/run_dist_slurm.sh pat_earth pvt_pose 8 ./tools/pose.sh
 --name=my14_3_all_300 --model=mypvt14_3_small --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=100
 --pretrain_from=data/pretrained/mypvt14_3_300.pth
 
+GPUS_PER_NODE=8 ./tools/run_dist_slurm.sh pat_earth pvt_pose 8 ./tools/pose.sh
+--dataset=all --batch_size=64 --num_workers=4 --num_epochs=100 --summary_steps=100
+--name=p2_all_300 --model=pvt_small_impr8_peg --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=100 \
+--pretrain_from=data/pretrained/pvt_small_impr8_peg.pth \
+--resume_from=logs/p2_all_300/checkpoint/checkpoint_latest.pth
+
+
+    -x SH-IDC1-10-198-4-100,SH-IDC1-10-198-4-101,SH-IDC1-10-198-4-102,SH-IDC1-10-198-4-103,SH-IDC1-10-198-4-116,SH-IDC1-10-198-4-117,SH-IDC1-10-198-4-118,SH-IDC1-10-198-4-119 \
+
+srun -p pat_earth \
+    --ntasks 8 \
+    --job-name=mesh \
+    --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
+    python -u main.py --dataset=all --batch_size=64 --num_workers=4 --num_epochs=100 --summary_steps=100 \
+    --name=p2_all_300 --model=pvt_small_impr8_peg --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=100 \
+    --pretrain_from=data/pretrained/pvt_small_impr8_peg.pth \
+    --resume_from=logs/p2_all_300/checkpoint/checkpoint_latest.pth
 
 
 spring.submit arun \
@@ -138,3 +155,10 @@ spring.submit arun \
     --pretrain_from=data/pretrained/pvt_small_impr8_peg.pth \
     --resume_from=logs/p2_all_300/checkpoint/checkpoint_latest.pth"
 
+srun -p pat_earth \
+    --ntasks 8 \
+    --job-name=mesh \
+    --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
+    python -u main.py --dataset=all --batch_size=64 --num_workers=4 --num_epochs=100 --summary_steps=100 \
+    --name=my20_all_150 --model=mypvt20_small --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=100 \
+    --pretrain_from=data/pretrained/my20_150.pth \
