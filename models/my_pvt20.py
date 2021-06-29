@@ -164,14 +164,14 @@ class Attention(nn.Module):
 
     def forward(self, x, H, W):
         B, N, C = x.shape
-        q = self.q(x).reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
+        q = self.q(x).reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3).contiguous()
 
         #if self.sr_ratio > 1:
-        x_ = x.permute(0, 2, 1).reshape(B, C, H, W)
-        x_ = self.sr(self.pool(x_)).reshape(B, C, -1).permute(0, 2, 1)
+        x_ = x.permute(0, 2, 1).reshape(B, C, H, W).contiguous()
+        x_ = self.sr(self.pool(x_)).reshape(B, C, -1).permute(0, 2, 1).contiguous()
         x_ = self.norm(x_)
         x_ = self.act(x_)
-        kv = self.kv(x_).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+        kv = self.kv(x_).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4).contiguous()
         #else:
         #    kv = self.kv(x).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
         k, v = kv[0], kv[1]
@@ -180,7 +180,7 @@ class Attention(nn.Module):
         attn = attn.softmax(dim=-1)
         attn = self.attn_drop(attn)
 
-        x = (attn @ v).transpose(1, 2).reshape(B, N, C)
+        x = (attn @ v).transpose(1, 2).reshape(B, N, C).contiguous()
         x = self.proj(x)
         x = self.proj_drop(x)
 
@@ -230,20 +230,20 @@ class MyAttention(nn.Module):
 
     def forward(self, x, x_source, loc_source, H, W, conf_source=None):
         B, N, C = x.shape
-        q = self.q(x).reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
+        q = self.q(x).reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3).contiguous()
 
         h, w = H // self.sr_ratio, W // self.sr_ratio
         x_source = token2map(x_source, loc_source, [h, w], 1, 1)
         x_source = self.sr(x_source)
-        x_source = x_source.reshape(B, C, -1).permute(0, 2, 1)
+        x_source = x_source.reshape(B, C, -1).permute(0, 2, 1).contiguous()
         x_source = self.norm(x_source)
         x_source = self.act(x_source)
         if conf_source is not None:
             conf_source = token2map(conf_source, loc_source, [h, w], 1, 1)
-            conf_source = conf_source.reshape(B, 1, -1).permute(0, 2, 1)
+            conf_source = conf_source.reshape(B, 1, -1).permute(0, 2, 1).contiguous()
 
         _, Ns, _ = x_source.shape
-        kv = self.kv(x_source).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+        kv = self.kv(x_source).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4).contiguous()
         k, v = kv[0], kv[1]
 
         attn = (q @ k.transpose(-2, -1)) * self.scale
@@ -732,7 +732,7 @@ def token2map(x, loc, map_size, kernel_size, sigma, return_mask=False):
     out = x.new_zeros(B*H*W, C+1)
     out.index_add_(dim=0, index=idx.reshape(B*N),
                    source=torch.cat([x, x.new_ones(B, N, 1)], dim=-1).reshape(B*N, C+1))
-    out = out.reshape(B, H, W, C+1).permute(0, 3, 1, 2)
+    out = out.reshape(B, H, W, C+1).permute(0, 3, 1, 2).contiguous()
     feature, mask = out[:, :-1], out[:, [-1]]
 
     feature = feature / (mask + 1e-6)
@@ -750,18 +750,18 @@ def map2token(feature_map, loc_xy, mode='bilinear', align_corners=False):
     loc_xy = loc_xy.type(feature_map.dtype) * 2 - 1
     loc_xy = loc_xy.unsqueeze(1)
     tokens = F.grid_sample(feature_map, loc_xy, mode=mode, align_corners=align_corners)
-    tokens = tokens.permute(0, 2, 3, 1).squeeze(1)
+    tokens = tokens.permute(0, 2, 3, 1).squeeze(1).contiguous()
     return tokens
 
 
 def get_pos_embed(pos_embed, loc_xy, pos_size=None):
     _, H, W, C = pos_embed.shape
     B, N, _ = loc_xy.shape
-    pos_embed = pos_embed.permute(0, 3, 1, 2).expand([B, C, H, W])
+    pos_embed = pos_embed.permute(0, 3, 1, 2).expand([B, C, H, W]).contiguous()
     loc_xy = loc_xy * 2 - 1
     loc_xy = loc_xy.unsqueeze(1)
     pos_feature = F.grid_sample(pos_embed, loc_xy)
-    pos_feature = pos_feature.permute(0, 2, 3, 1).squeeze(1)
+    pos_feature = pos_feature.permute(0, 2, 3, 1).squeeze(1).contiguous()
     # print('use interpolate pos embed.')
     return pos_feature
 
