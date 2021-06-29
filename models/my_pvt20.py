@@ -61,7 +61,7 @@ class DWConv(nn.Module):
         B, N, C = x.shape
         x = x.transpose(1, 2).view(B, C, H, W).contiguous()
         x = self.dwconv(x)
-        x = x.flatten(2).transpose(1, 2)
+        x = x.flatten(2).transpose(1, 2).contiguous()
 
         return x
 
@@ -253,7 +253,7 @@ class MyAttention(nn.Module):
         attn = attn.softmax(dim=-1)
         attn = self.attn_drop(attn)
 
-        x = (attn @ v).transpose(1, 2).reshape(B, N, C)
+        x = (attn @ v).transpose(1, 2).reshape(B, N, C).contiguous()
         x = self.proj(x)
         x = self.proj_drop(x)
         return x
@@ -296,7 +296,7 @@ class OverlapPatchEmbed(nn.Module):
     def forward(self, x):
         x = self.proj(x)
         _, _, H, W = x.shape
-        x = x.flatten(2).transpose(1, 2)
+        x = x.flatten(2).transpose(1, 2).contiguous()
         x = self.norm(x)
 
         return x, H, W
