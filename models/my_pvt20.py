@@ -59,7 +59,7 @@ class DWConv(nn.Module):
 
     def forward(self, x, H, W):
         B, N, C = x.shape
-        x = x.transpose(1, 2).view(B, C, H, W)
+        x = x.transpose(1, 2).view(B, C, H, W).contiguous()
         x = self.dwconv(x)
         x = x.flatten(2).transpose(1, 2)
 
@@ -668,7 +668,7 @@ def guassian_filt(x, kernel_size=3, sigma=2):
 
     # Create a x, y coordinate grid of shape (kernel_size, kernel_size, 2)
     x_coord = torch.arange(kernel_size, device=x.device)
-    x_grid = x_coord.repeat(kernel_size).view(kernel_size, kernel_size)
+    x_grid = x_coord.repeat(kernel_size).view(kernel_size, kernel_size).contiguous()
     y_grid = x_grid.t()
     xy_grid = torch.stack([x_grid, y_grid], dim=-1).float()
 
@@ -688,7 +688,7 @@ def guassian_filt(x, kernel_size=3, sigma=2):
     gaussian_kernel = gaussian_kernel / torch.sum(gaussian_kernel)
 
     # Reshape to 2d depthwise convolutional weight
-    gaussian_kernel = gaussian_kernel.view(1, 1, kernel_size, kernel_size)
+    gaussian_kernel = gaussian_kernel.view(1, 1, kernel_size, kernel_size).contiguous()
     gaussian_kernel = gaussian_kernel.repeat(channels, 1, 1, 1)
 
     paddding = int((kernel_size - 1) // 2)
