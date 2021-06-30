@@ -525,7 +525,7 @@ class MyPVT(nn.Module):
     def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dims=[64, 128, 256, 512],
                  num_heads=[1, 2, 4, 8], mlp_ratios=[4, 4, 4, 4], qkv_bias=False, qk_scale=None, drop_rate=0.,
                  attn_drop_rate=0., drop_path_rate=0., norm_layer=nn.LayerNorm,
-                 depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1], pretrained=None):
+                 depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1], pretrained=None, alpha=1):
         super().__init__()
 
         img_size = img_size // 2
