@@ -17,7 +17,7 @@ import utils.samplers as samplers
 from torch.utils.data import DataLoader
 from train.train_one_epoch import train_one_epoch, evaluate
 from pathlib import Path
-from train.criterion import MeshLoss, JointEvaluator
+from train.criterion import MeshLoss2, JointEvaluator
 from models.TMR import build_model
 from datasets.datasets import create_dataset, create_val_dataset
 from utils.train_options import DDPTrainOptions
@@ -94,7 +94,7 @@ def main(options):
     # model, criterion, postprocessors = build_model(options)
     model = build_model(options)
     model.to(device)
-    criterion = MeshLoss(options, device)
+    criterion = MeshLoss2(options, device)
     evaluator = JointEvaluator(options, device)
 
     model_without_ddp = model

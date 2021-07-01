@@ -163,4 +163,5 @@ srun -p pat_earth \
     python -u main.py --dataset=all --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=100 \
     --name=my21_all_f300 --model=mypvt21_small --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=100 \
     --pretrain_from=data/pretrained/my20_300.pth \
-    --resume_from=logs/my21_all_f300/checkpoints/checkpoint_latest.pth
+    --resume_from=logs/my21_all_f300/checkpoints/checkpoint_latest.pth \
+    --img_res=448
