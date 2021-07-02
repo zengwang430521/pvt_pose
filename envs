@@ -2,3 +2,11 @@ conda create -n transformer_pose python=3.6
 source activate transformer_pose
 conda install pytorch==1.5.0 torchvision==0.6.0 cudatoolkit=10.1 -c pytorch
 pip install -r requirements.txt
+
+
+git clone https://github.com/KinglittleQ/torch-batch-svd.git
+export CUDA_HOME=/usr/local/cuda/
+export LIBRARY_PATH=$LIBRARY_PATH:/usr/local/cuda/lib64/
+python setup.py install
+cd tests
+python -m pytest test.py
