@@ -162,6 +162,6 @@ srun -p pat_earth \
     --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     python -u main.py --dataset=all --batch_size=32 --num_workers=4 --num_epochs=120 --summary_steps=100 \
     --pretrain_from=data/pretrained/my20_300.pth \
-    --name=my20_all_300_f --model=mypvt20_small --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=100 \
-    --resume_from=logs/my20_all_300/checkpoints/checkpoint_latest.pth \
+    --name=my20c_all_300 --model=mypvt20c_small --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=100 \
+    --resume_from=logs/my20c_all_300/checkpoints/checkpoint_latest.pth \
     --img_res=448
