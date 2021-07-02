@@ -334,17 +334,17 @@ class DDPTrainOptions(object):
         optim = self.parser.add_argument_group('Optimization')
         optim.add_argument('--adam_beta1', type=float, default=0.9, help='Value for Adam Beta 1')
         optim.add_argument("--lr", type=float, default=2.5e-4, help="Learning rate")
-        optim.add_argument("--wd", type=float, default=0, help="Weight decay weight")
-        optim.add_argument("--lam_mesh", type=float, default=1, help='lambda of mesh loss')
+        optim.add_argument("--wd", type=float, default=1e-4, help="Weight decay weight")
+        optim.add_argument("--lam_mesh", type=float, default=2, help='lambda of mesh loss')
         optim.add_argument("--lam_key2d", type=float, default=1, help='lambda of 2D joint loss')
-        optim.add_argument("--lam_key3d", type=float, default=1, help='lambda of 3D joint loss')
-        optim.add_argument("--lam_smpl_pose", type=float, default=1, help='lambda of scale loss')
-        optim.add_argument("--lam_smpl_beta", type=float, default=0.1, help='lambda of scale loss')
+        optim.add_argument("--lam_key3d", type=float, default=2, help='lambda of 3D joint loss')
+        optim.add_argument("--lam_smpl_pose", type=float, default=2, help='lambda of scale loss')
+        optim.add_argument("--lam_smpl_beta", type=float, default=0.2, help='lambda of scale loss')
         optim.add_argument('--use_smpl_joints', dest='use_smpl_joints', default=False, action='store_true',
                            help='Use the 24 SMPL joints for supervision, '
                                 'should be set True when using data from SURREAL dataset.')
         optim.add_argument("--lam_key2d_smpl", type=float, default=1, help='lambda of 2D SMPL joint loss')
-        optim.add_argument("--lam_key3d_smpl", type=float, default=1, help='lambda of 3D SMPL joint loss')
+        optim.add_argument("--lam_key3d_smpl", type=float, default=2, help='lambda of 3D SMPL joint loss')
         return
 
     def parse_args(self):
