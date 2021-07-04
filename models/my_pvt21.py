@@ -490,7 +490,8 @@ class DownLayer(nn.Module):
         x = self.conv(x)
         x = map2token(x, pos)
         B, N, C = x.shape
-        sample_num = max(math.ceil(N * self.sample_ratio) - N_grid, 0)
+        # sample_num = max(math.ceil(N * self.sample_ratio) - N_grid, 0)
+        sample_num = max(math.ceil(N * self.sample_ratio), 0)
 
         x_grid = x[:, :N_grid]
         x_ada = x[:, N_grid:]

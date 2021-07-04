@@ -153,18 +153,15 @@ spring.submit arun \
     "python -u main.py --dataset=all --batch_size=64 --num_workers=4 --num_epochs=100 --summary_steps=100 \
     --name=p2_all_300 --model=pvt_small_impr8_peg --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=100 \
     --pretrain_from=data/pretrained/pvt_small_impr8_peg.pth \
-    --resume_from=logs/p2_all_300/checkpoint/checkpoint_latest.pth"
+    --resume_from=logs/p2_all_300/checkpoints/checkpoint_latest.pth"
 
 srun -p pat_earth \
     -x SH-IDC1-10-198-4-100,SH-IDC1-10-198-4-101,SH-IDC1-10-198-4-102,SH-IDC1-10-198-4-103,SH-IDC1-10-198-4-116,SH-IDC1-10-198-4-117,SH-IDC1-10-198-4-118,SH-IDC1-10-198-4-119 \
     --ntasks 8 \
     --job-name=mesh \
     --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
-    python -u main_finetune.py --dataset=all --batch_size=32 --num_workers=4 --num_epochs=60 --summary_steps=100 \
-    --pretrain_from=data/pretrained/my20_300.pth \
-    --name=my20_all_300_2f49 --model=mypvt20_small --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=50 \
-    --resume_from=logs/my20_all_300_2/checkpoints/checkpoint0049.pth \
-
-
-
+    python -u main.py --dataset=all --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=100 \
+    --pretrain_from=/mnt/lustre/zengwang/codes/PVT/work_dirs/my21_fine/checkpoint.pth \
+    --name=my21_all_f350 --model=mypvt21_small --opt=adamw --lr=2.5e-4 --wd=0.0001 --lr_drop=100 \
+    --resume_from=logs/my21_all_f350/checkpoints/checkpoint_latest.pth \
     --img_res=448
