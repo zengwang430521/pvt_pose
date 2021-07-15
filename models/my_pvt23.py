@@ -183,14 +183,14 @@ class Attention(nn.Module):
 
     def forward(self, x, H, W):
         B, N, C = x.shape
-        q = self.q(x).reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
+        q = self.q(x).reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3).contiguous()
 
         #if self.sr_ratio > 1:
-        x_ = x.permute(0, 2, 1).reshape(B, C, H, W)
-        x_ = self.sr(self.pool(x_)).reshape(B, C, -1).permute(0, 2, 1)
+        x_ = x.permute(0, 2, 1).reshape(B, C, H, W).contiguous()
+        x_ = self.sr(self.pool(x_)).reshape(B, C, -1).permute(0, 2, 1).contiguous()
         x_ = self.norm(x_)
         x_ = self.act(x_)
-        kv = self.kv(x_).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+        kv = self.kv(x_).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4).contiguous()
         #else:
         #    kv = self.kv(x).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
         k, v = kv[0], kv[1]
@@ -199,7 +199,7 @@ class Attention(nn.Module):
         attn = attn.softmax(dim=-1)
         attn = self.attn_drop(attn)
 
-        x = (attn @ v).transpose(1, 2).reshape(B, N, C)
+        x = (attn @ v).transpose(1, 2).reshape(B, N, C).contiguous()
         x = self.proj(x)
         x = self.proj_drop(x)
 
@@ -272,7 +272,7 @@ class MyAttention(nn.Module):
         attn = attn.softmax(dim=-1)
         attn = self.attn_drop(attn)
 
-        x = (attn @ v).transpose(1, 2).reshape(B, N, C)
+        x = (attn @ v).transpose(1, 2).reshape(B, N, C).contiguous()
         x = self.proj(x)
         x = self.proj_drop(x)
         return x
@@ -728,7 +728,7 @@ def extract_local_feature(src, loc, kernel_size=(3, 3)):
     grid = loc[:, :, None, None, :] + grid[None, None, ...]     # (B, N, h, w, 2)
 
     loc_feature = F.grid_sample(src, grid.flatten(2, 3))        # (B, C, N, h * w)
-    loc_feature = loc_feature.reshape(B, C, N, h, w)            # (B, C, N, h, w)
+    loc_feature = loc_feature.reshape(B, C, N, h, w).contiguous()            # (B, C, N, h, w)
     loc_feature = loc_feature.permute(0, 2, 1, 3, 4).contiguous()            # (B, N, C, h, w)
     return loc_feature.flatten(0, 1)                            # (B * N, C, h, w)
 
