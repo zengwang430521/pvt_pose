@@ -145,38 +145,38 @@ def evaluate(model, evaluator, dataloader, device):
     print_freq = 20
     data_iter = iter(dataloader)
     for _ in metric_logger.log_every(range(len(dataloader)), print_freq, header):
+        with torch.no_grad():
+            input_batch = data_iter.next()
+            images = input_batch['img'].to(device)
+            pred_para = model(images)
+            pred_joints_3d, gt_joints_3d = evaluator(pred_para, input_batch)
 
-        input_batch = data_iter.next()
-        images = input_batch['img'].to(device)
-        pred_para = model(images)
-        pred_joints_3d, gt_joints_3d = evaluator(pred_para, input_batch)
+            pred_joints_3d = utils.all_gather(pred_joints_3d)
+            pred_joints_3d = [p.to(device) for p in pred_joints_3d]
+            pred_joints_3d = torch.cat(pred_joints_3d, dim=0)
 
-        pred_joints_3d = utils.all_gather(pred_joints_3d)
-        pred_joints_3d = [p.to(device) for p in pred_joints_3d]
-        pred_joints_3d = torch.cat(pred_joints_3d, dim=0)
+            gt_joints_3d = utils.all_gather(gt_joints_3d)
+            gt_joints_3d = [g.to(device) for g in gt_joints_3d]
+            gt_joints_3d = torch.cat(gt_joints_3d, dim=0)
 
-        gt_joints_3d = utils.all_gather(gt_joints_3d)
-        gt_joints_3d = [g.to(device) for g in gt_joints_3d]
-        gt_joints_3d = torch.cat(gt_joints_3d, dim=0)
+            error = torch.sqrt(((pred_joints_3d - gt_joints_3d) ** 2).sum(dim=-1)).mean(dim=-1).detach().cpu().numpy() * 1000
+            error_pa = reconstruction_error(pred_joints_3d.cpu().numpy(), gt_joints_3d.cpu().numpy(), reduction=None) * 1000
+            error_scale = reconstruction_error(pred_joints_3d.cpu().numpy(), gt_joints_3d.cpu().numpy(), reduction=None, skip=['rot', 'tran']) * 1000
+            error_rot = reconstruction_error(pred_joints_3d.cpu().numpy(), gt_joints_3d.cpu().numpy(), reduction=None, skip=['scale', 'tran']) * 1000
+            error_tran = reconstruction_error(pred_joints_3d.cpu().numpy(), gt_joints_3d.cpu().numpy(), reduction=None, skip=['scale', 'rot']) * 1000
 
-        error = torch.sqrt(((pred_joints_3d - gt_joints_3d) ** 2).sum(dim=-1)).mean(dim=-1).detach().cpu().numpy() * 1000
-        error_pa = reconstruction_error(pred_joints_3d.cpu().numpy(), gt_joints_3d.cpu().numpy(), reduction=None) * 1000
-        error_scale = reconstruction_error(pred_joints_3d.cpu().numpy(), gt_joints_3d.cpu().numpy(), reduction=None, skip=['rot', 'tran']) * 1000
-        error_rot = reconstruction_error(pred_joints_3d.cpu().numpy(), gt_joints_3d.cpu().numpy(), reduction=None, skip=['scale', 'tran']) * 1000
-        error_tran = reconstruction_error(pred_joints_3d.cpu().numpy(), gt_joints_3d.cpu().numpy(), reduction=None, skip=['scale', 'rot']) * 1000
+            mpjpe.append(error)
+            mpjpe_pa.append(error_pa)
+            mpjpe_scale.append(error_scale)
+            mpjpe_rot.append(error_rot)
+            mpjpe_tran.append(error_tran)
 
-        mpjpe.append(error)
-        mpjpe_pa.append(error_pa)
-        mpjpe_scale.append(error_scale)
-        mpjpe_rot.append(error_rot)
-        mpjpe_tran.append(error_tran)
-
-        metric_logger.update(MPJPE=float(error.mean()),
-                             MPJPE_PA=float(error_pa.mean()),
-                             MPJPE_scale=float(error_scale.mean()),
-                             MPJPE_rot=float(error_rot.mean()),
-                             MPJPE_tran=float(error_tran.mean()),
-                             )
+            metric_logger.update(MPJPE=float(error.mean()),
+                                 MPJPE_PA=float(error_pa.mean()),
+                                 MPJPE_scale=float(error_scale.mean()),
+                                 MPJPE_rot=float(error_rot.mean()),
+                                 MPJPE_tran=float(error_tran.mean()),
+                                 )
     stats = dict(MPJPE=float(np.concatenate(mpjpe, axis=0).mean()),
                  MPJPE_PA=float(np.concatenate(mpjpe_pa, axis=0).mean()),
                  MPJPE_scale=float(np.concatenate(mpjpe_scale, axis=0).mean()),
