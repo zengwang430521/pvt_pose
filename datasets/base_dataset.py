@@ -254,7 +254,10 @@ class BaseDataset(Dataset):
             img = cv2.imread(imgname)[:, :, ::-1].copy().astype(np.float32)
         except TypeError:
             print(imgname)
-        orig_shape = np.array(img.shape)[:2]
+        try:
+            orig_shape = np.array(img.shape)[:2]
+        except TypeError:
+            print(imgname)
         item['scale'] = float(sc * scale)
         item['center'] = center.astype(np.float32)
         item['orig_shape'] = orig_shape
