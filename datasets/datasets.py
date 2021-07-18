@@ -7,7 +7,7 @@ import numpy as np
 
 from .base_dataset import BaseDataset
 from .surreal_dataset import SurrealDataset
-
+import math
 
 def create_dataset(dataset, options, **kwargs):
     dataset_setting = {
@@ -42,7 +42,8 @@ class MeshMixDataset(torch.utils.data.Dataset):
     def __init__(self, datasets, partition, options, **kwargs):
         """Load data from multiple datasets."""
         assert min(partition) >= 0
-        assert sum(partition) == 1
+        assert math.isclose(sum(partition), 1, abs_tol=1e-2)
+        # assert sum(partition) == 1
         self.partition = np.array(partition).cumsum()
         self.datasets = [BaseDataset(options, ds, **kwargs) for ds in datasets]
         self.length = max(len(ds) for ds in self.datasets)
