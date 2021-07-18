@@ -258,6 +258,11 @@ class BaseDataset(Dataset):
             orig_shape = np.array(img.shape)[:2]
         except TypeError:
             print(imgname)
+            print(imgname)
+            print(imgname)
+            print(imgname)
+            print(imgname)
+
         item['scale'] = float(sc * scale)
         item['center'] = center.astype(np.float32)
         item['orig_shape'] = orig_shape
