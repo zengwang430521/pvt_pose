@@ -37,12 +37,12 @@ def extract_train_frame(dataset_path, train_file, test_file):
                 imgs_path = os.path.join(seq_path,
                                          'imageFrames',
                                          'video_' + str(vid_i))
+                print(imgs_path)
 
                 # extract frames from video file
                 # if doesn't exist
                 if not os.path.isdir(imgs_path):
                     os.makedirs(imgs_path)
-                    print(imgs_path)
 
                 # video file
                 vid_file = os.path.join(seq_path,
