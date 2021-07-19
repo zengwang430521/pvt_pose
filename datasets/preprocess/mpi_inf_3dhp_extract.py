@@ -74,8 +74,8 @@ def extract_train_frame(dataset_path, train_file, test_file):
 
 
 if __name__ == '__main__':
-    # dataset_path = '/mnt/lustre/zengwang/data/3dhp/3dhp/mpi_inf_3dhp'
-    dataset_path = './'
+    dataset_path = '/mnt/lustre/zengwang/data/3dhp/3dhp/mpi_inf_3dhp'
+    # dataset_path = './'
     train_file = '../../data/datasets/npz/mpi_inf_3dhp_train.npz'
     test_file = '../../data/datasets/npz/mpi_inf_3dhp_train.npz'
     extract_train_frame(dataset_path, train_file, test_file)
