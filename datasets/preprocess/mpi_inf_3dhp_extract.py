@@ -72,6 +72,7 @@ def extract_train_frame(dataset_path, train_file, test_file):
                     # save image
                     if img_view in imgname_train or imgname in imgname_test:
                         cv2.imwrite(imgname, image)
+                        print(imgname)
 
 
 if __name__ == '__main__':
