@@ -10,6 +10,7 @@ from models.smpl_head import HMRHead
 import utils.config as cfg
 
 vis = False
+# vis = True
 
 
 class Mlp_old(nn.Module):
@@ -491,6 +492,44 @@ class ResampleBlock(nn.Module):
             x_cat = torch.cat([x_down, local], dim=-1)
             x_down = x_down + self.local_fc(x_cat)
 
+
+        if vis and loc_down.shape[1] != loc.shape[1]:
+            import matplotlib.pyplot as plt
+            IMAGENET_DEFAULT_MEAN = torch.tensor([0.485, 0.456, 0.406], device=src.device)[None, :, None, None]
+            IMAGENET_DEFAULT_STD = torch.tensor([0.229, 0.224, 0.225], device=src.device)[None, :, None, None]
+            src = src * IMAGENET_DEFAULT_STD + IMAGENET_DEFAULT_MEAN
+            # for i in range(x.shape[0]):
+            for i in range(1):
+                img = src[i].permute(1, 2, 0).detach().cpu()
+
+                ax = plt.subplot(1, 3, 1)
+                ax.clear()
+                conf_map = token2map(conf, loc, [H, W], self.inter_kernel, self.inter_sigma)
+                # conf_map = F.interpolate(conf_map, [224, 224], mode='bilinear')
+                # conf_map = token2map(conf, loc, self.HR_res, 1 + (self.inter_kernel-1) * self.HR_res[0] // H, self.inter_sigma)
+
+                ax.imshow(conf_map[i, 0].detach().cpu())
+
+                ax = plt.subplot(1, 3, 2)
+                ax.clear()
+                ax.imshow(img, extent=[0, 1, 0, 1])
+                loc_show = loc
+                loc_show = (loc_show + 1) * 0.5
+                loc_grid = loc_show[i, :N_grid].detach().cpu().numpy()
+                ax.scatter(loc_grid[:, 0], 1 - loc_grid[:, 1], c='blue', s=0.5)
+                loc_ada = loc_show[i, N_grid:].detach().cpu().numpy()
+                ax.scatter(loc_ada[:, 0], 1 - loc_ada[:, 1], c='red', s=0.5)
+
+                ax = plt.subplot(1, 3, 3)
+                ax.clear()
+                ax.imshow(img, extent=[0, 1, 0, 1])
+                loc_show = loc_down
+                loc_show = (loc_show + 1) * 0.5
+                loc_grid = loc_show[i, :N_grid].detach().cpu().numpy()
+                ax.scatter(loc_grid[:, 0], 1 - loc_grid[:, 1], c='blue', s=0.5)
+                loc_ada = loc_show[i, N_grid:].detach().cpu().numpy()
+                ax.scatter(loc_ada[:, 0], 1 - loc_ada[:, 1], c='red', s=0.5)
+
         return x_down, loc_down
 
 
@@ -848,41 +887,6 @@ def map2token(feature_map, loc_xy, mode='bilinear', align_corners=False):
     tokens = F.grid_sample(feature_map, loc_xy, mode=mode, align_corners=align_corners)
     tokens = tokens.permute(0, 2, 3, 1).squeeze(1).contiguous()
     return tokens
-
-
-def show_tokens(x, out, N_grid=14*14):
-    import matplotlib.pyplot as plt
-    IMAGENET_DEFAULT_MEAN = torch.tensor([0.485, 0.456, 0.406], device=x.device)[None, :, None, None]
-    IMAGENET_DEFAULT_STD = torch.tensor([0.229, 0.224, 0.225], device=x.device)[None, :, None, None]
-    x = x * IMAGENET_DEFAULT_STD + IMAGENET_DEFAULT_MEAN
-    # for i in range(x.shape[0]):
-    for i in range(1):
-        img = x[i].permute(1, 2, 0).detach().cpu()
-        ax = plt.subplot(1, len(out)+2, 1)
-        ax.clear()
-        ax.imshow(img)
-        for lv in range(len(out)):
-            ax = plt.subplot(1, len(out)+2, lv+2+(lv > 0))
-            ax.clear()
-            ax.imshow(img, extent=[0, 1, 0, 1])
-            loc_grid = out[lv][1][i, :N_grid].detach().cpu().numpy()
-            ax.scatter(loc_grid[:, 0], 1 - loc_grid[:, 1], c='blue', s=0.4+lv*0.1)
-            loc_ada = out[lv][1][i, N_grid:].detach().cpu().numpy()
-            ax.scatter(loc_ada[:, 0], 1 - loc_ada[:, 1], c='red', s=0.4+lv*0.1)
-    return
-
-
-def show_conf(conf, loc):
-    H = int(conf.shape[1]**0.5)
-    if H == 56:
-        conf = F.softmax(conf, dim=1)
-        conf_map = token2map(conf,  map_size=[H, H], loc=loc, kernel_size=3, sigma=2)
-        lv = 3
-        ax = plt.subplot(1, 6, lv)
-        ax.clear()
-        ax.imshow(conf_map[0, 0].detach().cpu())
-
-
 
 
 @register_model

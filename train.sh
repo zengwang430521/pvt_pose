@@ -156,6 +156,15 @@ srun -p pat_earth \
 
 
 srun -p 3dv-share -w SH-IDC1-10-198-6-130\
+    --ntasks 8 \
+    --job-name=mesh \
+    --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
+    python -u main.py --dataset=spin --use_spin_fit --adaptive_weight --gtkey3d_from_mesh \
+    --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=100 \
+    --name=my2320_spin --model=mypvt2320_small --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=80 \
+    --pretrain_from=data/pretrained/my2320_300.pth \
+    --resume_from=logs/my2320_spin/checkpoints/checkpoint_latest.pth     --img_res=448
+
 
 srun -p pat_earth \
     -x SH-IDC1-10-198-4-100,SH-IDC1-10-198-4-101,SH-IDC1-10-198-4-102,SH-IDC1-10-198-4-103,SH-IDC1-10-198-4-116,SH-IDC1-10-198-4-117,SH-IDC1-10-198-4-118,SH-IDC1-10-198-4-119 \
