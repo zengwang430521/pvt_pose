@@ -19,7 +19,7 @@ COCO_ROOT = 'data/datasets/coco'
 UP_3D_ROOT = 'data/datasets/up-3d'
 SURREAL_ROOT = 'data/datasets/SURREAL'
 PW3D_ROOT = 'data/datasets/3DPW'
-MPI_INF_3DHP_ROOT = 'data/datasets/mpi-inf-3dhp/mpi_inf_3dhp_train_set'
+MPI_INF_3DHP_ROOT = 'data/datasets/mpi-inf-3dhp/mpi_inf_3dhp_train_set_v2'
 LSPET_ROOT = 'data/datasets/hr-lspet'
 
 # Output folder to save test/train npz files
