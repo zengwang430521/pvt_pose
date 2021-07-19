@@ -70,7 +70,7 @@ def extract_train_frame(dataset_path, train_file, test_file):
                                             'imageFrames',
                                             'video_' + str(vid_i),
                                             img_name)
-                    print(img_view)
+                    # print(img_view)
                     # save image
                     if img_view in imgname_train or imgname in imgname_test:
                         cv2.imwrite(imgname, image)
