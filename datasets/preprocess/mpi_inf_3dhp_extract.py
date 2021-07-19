@@ -16,10 +16,10 @@ import scipy.misc
 
 def extract_train_frame(dataset_path, train_file, test_file):
     data = np.load(train_file)
-    imgname_list = data['imgname']
+    imgname_train = data['imgname']
 
     data = np.load(test_file)
-    imgname_list += data['imgname']
+    imgname_test = data['imgname']
 
     # training data
     user_list = range(1, 9)
@@ -61,7 +61,7 @@ def extract_train_frame(dataset_path, train_file, test_file):
                     imgname = os.path.join(imgs_path,
                                            'frame_%06d.jpg' % frame)
                     # save image
-                    if imgname in imgname_list:
+                    if imgname in imgname_train or imgname in imgname_test:
                         cv2.imwrite(imgname, image)
 
 
