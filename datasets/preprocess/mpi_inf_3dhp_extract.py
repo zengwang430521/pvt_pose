@@ -42,6 +42,7 @@ def extract_train_frame(dataset_path, train_file, test_file):
                 # if doesn't exist
                 if not os.path.isdir(imgs_path):
                     os.makedirs(imgs_path)
+                    print(imgs_path)
 
                 # video file
                 vid_file = os.path.join(seq_path,
@@ -60,13 +61,21 @@ def extract_train_frame(dataset_path, train_file, test_file):
                     # image name
                     imgname = os.path.join(imgs_path,
                                            'frame_%06d.jpg' % frame)
+
+                    img_name = imgname.split('/')[-1]
+                    img_view = os.path.join('S' + str(user_i),
+                                            'Seq' + str(seq_i),
+                                            'imageFrames',
+                                            'video_' + str(vid_i),
+                                            img_name)
                     # save image
-                    if imgname in imgname_train or imgname in imgname_test:
+                    if img_view in imgname_train or imgname in imgname_test:
                         cv2.imwrite(imgname, image)
 
 
 if __name__ == '__main__':
-    dataset_path = '/mnt/lustre/zengwang/data/3dhp/3dhp/mpi_inf_3dhp'
+    # dataset_path = '/mnt/lustre/zengwang/data/3dhp/3dhp/mpi_inf_3dhp'
+    dataset_path = './'
     train_file = '../../data/datasets/npz/mpi_inf_3dhp_train.npz'
     test_file = '../../data/datasets/npz/mpi_inf_3dhp_train.npz'
     extract_train_frame(dataset_path, train_file, test_file)
