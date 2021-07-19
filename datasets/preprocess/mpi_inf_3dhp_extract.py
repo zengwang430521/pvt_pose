@@ -21,6 +21,8 @@ def extract_train_frame(dataset_path, train_file, test_file):
     data = np.load(test_file)
     imgname_test = data['imgname']
 
+    print('annot loaded')
+
     # training data
     user_list = range(1, 9)
     seq_list = range(1, 3)
@@ -38,7 +40,6 @@ def extract_train_frame(dataset_path, train_file, test_file):
                                          'imageFrames',
                                          'video_' + str(vid_i))
                 print(imgs_path)
-
                 # extract frames from video file
                 # if doesn't exist
                 if not os.path.isdir(imgs_path):
