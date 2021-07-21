@@ -205,6 +205,12 @@ class DDPTrainOptions(object):
         pin.add_argument('--no_pin_memory', dest='pin_memory', action='store_false', help='Number of processes used for data loading')
         gen.set_defaults(pin_memory=True)
 
+        gen.add_argument('--use_mc', dest='use_mc', action='store_true', help='use memcache')
+        gen.set_defaults(use_mc=False)
+        gen.add_argument('--mclient_path', default='/mnt/lustre/share/memcached_client', help='mc client path')
+
+
+
         io = self.parser.add_argument_group('io')
         io.add_argument('--log_dir', default='./logs', help='Directory to store logs')
         io.add_argument('--checkpoint', default=None, help='Path to checkpoint')

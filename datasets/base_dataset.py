@@ -14,6 +14,7 @@ import torch.nn.functional as F
 import utils.config as cfg
 from utils.imutils import crop, flip_img, flip_pose, flip_kp, transform, rot_aa
 import os
+from .mcloader import McLoader
 
 
 class BaseDataset(Dataset):
@@ -106,6 +107,18 @@ class BaseDataset(Dataset):
                 self.fit_joint_error = self.data['fit_errors'].astype(np.float32)
                 self.iuv_dir = join(self.img_dir, '{}_IUV_SPIN_fit'.format(self.uv_type))
 
+        memcached = getattr(options, 'use_mc', False)
+        mclient_path = getattr(options, 'mcilent_path', '')
+        self.memcached = memcached
+        self.mclient_path = mclient_path
+        self.initialized = False
+
+    def _init_memcached(self):
+        if not self.initialized:
+            assert self.mclient_path is not None
+            self.mc_loader = McLoader(self.mclient_path)
+            self.initialized = True
+
     def augm_params(self):
         """Get augmentation parameters."""
         flip = 0            # flipping
@@ -172,7 +185,7 @@ class BaseDataset(Dataset):
             kp[i,0:2] = transform(kp[i,0:2]+1, center, scale, 
                                   [self.options.img_res, self.options.img_res], rot=r)
         # convert to normalized coordinates
-        kp[:,:-1] = 2.*kp[:,:-1]/self.options.img_res - 1.
+        kp[:, :-1] = 2.*kp[:, :-1] / self.options.img_res - 1.
         # flip the x coordinates
         if f:
              kp = flip_kp(kp)
@@ -250,10 +263,16 @@ class BaseDataset(Dataset):
 
         # Load image
         imgname = join(self.img_dir, str(self.imgname[index]))
-        try:
+
+        if self.memcached:
+            self._init_memcached()
+            img = self.mc_loader(imgname)
+            img = img.convert('RGB')
+            img = np.array(img).astype(np.float32)
+        else:
+            # cv2 defaults to BGR order, but we use RGB order
             img = cv2.imread(imgname)[:, :, ::-1].copy().astype(np.float32)
-        except TypeError:
-            print(imgname)
+
         try:
             orig_shape = np.array(img.shape)[:2]
         except TypeError:

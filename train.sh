@@ -155,10 +155,15 @@ srun -p pat_earth \
     --resume_from=logs/my2320_all/checkpoints/checkpoint_latest.pth     --img_res=448
 
 
-srun -p 3dv-share -w SH-IDC1-10-198-6-130\
+srun -p 3dv-share -w SH-IDC1-10-198-6-129\
     --ntasks 8 \
-    --job-name=mesh \
-    --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
+    --job-name=debug \
+    --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=4 --kill-on-bad-exit=1 \
+    python -u main.py --dataset=all \
+    --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=100 \
+    --name=debug --model=hmr --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=80
+
+
     python -u main.py --dataset=spin --use_spin_fit --adaptive_weight --gtkey3d_from_mesh \
     --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=100 \
     --name=my2320_spin --model=mypvt2320_small --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=80 \
@@ -166,14 +171,22 @@ srun -p 3dv-share -w SH-IDC1-10-198-6-130\
     --resume_from=logs/my2320_spin/checkpoints/checkpoint_latest.pth     --img_res=448
 
 
-srun -p pat_earth \
-    -x SH-IDC1-10-198-4-100,SH-IDC1-10-198-4-101,SH-IDC1-10-198-4-102,SH-IDC1-10-198-4-103,SH-IDC1-10-198-4-116,SH-IDC1-10-198-4-117,SH-IDC1-10-198-4-118,SH-IDC1-10-198-4-119 \
+srun -p pat_earth -x SH-IDC1-10-198-4-[85,89-91,100-103,116-119] \
+srun -p 3dv-share -w SH-IDC1-10-198-6-138 \
     --ntasks 8 \
     --job-name=mesh \
-    --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
-    python -u main_finetune.py --dataset=all --batch_size=32 --num_workers=4 --num_epochs=120 --summary_steps=100 \
-    --name=my2320_all_3 --model=mypvt2320_small --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=100 \
-    --resume_from=logs/my2320_all_2/checkpoints/checkpoint0079.pth     --img_res=448
+    --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=4 --kill-on-bad-exit=1 \
+    python -u main.py --dataset=all \
+    --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=100 \
+    --name=my2520_all --model=mypvt2520_small --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=80 \
+    --pretrain_from=data/pretrained/my2520_300.pth \
+    --resume_from=logs/my2520_all/checkpoints/checkpoint_latest.pth     --img_res=448 --use_mc
+
+
+    python -u main.py --dataset=all --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=100 \
+    --name=my20_all_4 --model=mypvt20_small --opt=adamw --lr=2.5e-4 --wd=1e-4 --lr_drop=80 \
+    --resume_from=logs/my20_all_4/checkpoints/checkpoint_latest.pth     --img_res=224 \
+
 
     python -u main.py --dataset=spin --use_spin_fit --adaptive_weight --gtkey3d_from_mesh \
     --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=100 \
