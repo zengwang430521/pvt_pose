@@ -108,7 +108,7 @@ class BaseDataset(Dataset):
                 self.iuv_dir = join(self.img_dir, '{}_IUV_SPIN_fit'.format(self.uv_type))
 
         memcached = getattr(options, 'use_mc', False)
-        mclient_path = getattr(options, 'mcilent_path', '')
+        mclient_path = getattr(options, 'mclient_path', '')
         self.memcached = memcached
         self.mclient_path = mclient_path
         self.initialized = False
