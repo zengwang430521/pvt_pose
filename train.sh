@@ -171,8 +171,8 @@ srun -p 3dv-share -w SH-IDC1-10-198-6-129\
     --resume_from=logs/my2320_spin/checkpoints/checkpoint_latest.pth     --img_res=448
 
 
-srun -p pat_earth -x SH-IDC1-10-198-4-[85,89-91,100-103,116-119] \
 srun -p 3dv-share -w SH-IDC1-10-198-6-129 \
+srun -p pat_earth -x SH-IDC1-10-198-4-[85,89-91,100-103,116-119] \
     --ntasks 8 \
     --job-name=mesh \
     --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=4 --kill-on-bad-exit=1 \
