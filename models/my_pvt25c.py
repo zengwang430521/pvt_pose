@@ -10,7 +10,7 @@ from models.smpl_head import HMRHead
 import utils.config as cfg
 
 vis = False
-vis = True
+# vis = True
 
 class Mlp_old(nn.Module):
     def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.):
