@@ -10,7 +10,7 @@ from models.smpl_head import HMRHead
 import utils.config as cfg
 
 vis = False
-
+vis = True
 
 class Mlp_old(nn.Module):
     def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.):
@@ -500,6 +500,7 @@ class ResampleBlock(nn.Module):
             x_down = x_down + self.local_fc(x_cat)
 
         if vis:
+            extra_ratio = self.extra_ratio
             import matplotlib.pyplot as plt
             IMAGENET_DEFAULT_MEAN = torch.tensor([0.485, 0.456, 0.406], device=src.device)[None, :, None, None]
             IMAGENET_DEFAULT_STD = torch.tensor([0.229, 0.224, 0.225], device=src.device)[None, :, None, None]
@@ -510,8 +511,9 @@ class ResampleBlock(nn.Module):
 
                 ax = plt.subplot(1, 3, 1)
                 ax.clear()
-                conf_map = token2map(conf, loc, [H, W], self.inter_kernel, self.inter_sigma)
-                conf_map = F.interpolate(conf_map, self.HR_res, mode='bilinear')
+                # conf_map = token2map(conf, loc, [H, W], self.inter_kernel, self.inter_sigma)
+                conf_map = token2map(conf, loc, [7, 7], self.inter_kernel, self.inter_sigma)
+                # conf_map = F.interpolate(conf_map, self.HR_res, mode='bilinear')
                 # conf_map = token2map(conf, loc, self.HR_res, 1 + (self.inter_kernel-1) * self.HR_res[0] // H, self.inter_sigma)
 
                 ax.imshow(conf_map[i, 0].detach().cpu())
@@ -1157,6 +1159,204 @@ class MyPVT2520(nn.Module):
 @register_model
 def mypvt2520_small(pretrained=False, **kwargs):
     model = MyPVT2520(
+        patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1], **kwargs)
+    model.default_cfg = _cfg()
+
+    return model
+
+
+
+class MyPVT2520_2(nn.Module):
+    def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dims=[64, 128, 256, 512],
+                 num_heads=[1, 2, 4, 8], mlp_ratios=[4, 4, 4, 4], qkv_bias=False, qk_scale=None, drop_rate=0.,
+                 attn_drop_rate=0., drop_path_rate=0., norm_layer=nn.LayerNorm,
+                 depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1], pretrained=None):
+        super().__init__()
+
+        img_size = img_size // 2
+        self.num_classes = num_classes
+        self.depths = depths
+        self.grid_stride = sr_ratios[0]
+
+        # patch_embed
+        self.patch_embed1 = OverlapPatchEmbed(img_size=img_size, patch_size=7, stride=4, in_chans=in_chans,
+                                              embed_dim=embed_dims[0])
+        # self.patch_embed2 = OverlapPatchEmbed(img_size=img_size // 4, patch_size=3, stride=2, in_chans=embed_dims[0],
+        #                                       embed_dim=embed_dims[1])
+        # self.patch_embed3 = OverlapPatchEmbed(img_size=img_size // 8, patch_size=3, stride=2, in_chans=embed_dims[1],
+        #                                       embed_dim=embed_dims[2])
+        # self.patch_embed4 = OverlapPatchEmbed(img_size=img_size // 16, patch_size=3, stride=2, in_chans=embed_dims[2],
+        #                                       embed_dim=embed_dims[3])
+
+        # transformer encoder
+        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]  # stochastic depth decay rule
+        cur = 0
+
+        # self.block1 = nn.ModuleList([ResampleBlock(
+        #     embed_dim=embed_dims[0], dim_out=embed_dims[0], inter_kernel=sr_ratios[0]+1, inter_sigma=2,
+        #     num_heads=num_heads[0], mlp_ratio=mlp_ratios[0], qkv_bias=qkv_bias, qk_scale=qk_scale,
+        #     drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur + i], norm_layer=norm_layer,
+        #     sr_ratio=sr_ratios[0],
+        #     sample_ratio=1,
+        #     extra_ratio=1,
+        #     use_local=False)
+        #     for i in range(depths[0])])
+        self.block1 = nn.ModuleList([Block(
+            dim=embed_dims[0], num_heads=num_heads[0], mlp_ratio=mlp_ratios[0], qkv_bias=qkv_bias, qk_scale=qk_scale,
+            drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur + i], norm_layer=norm_layer,
+            sr_ratio=sr_ratios[0])
+            for i in range(depths[0])])
+
+        self.norm1 = norm_layer(embed_dims[0])
+        cur += depths[0]
+
+        self.block2 = nn.ModuleList([ResampleBlock(
+            embed_dim=embed_dims[0] if i == 0 else embed_dims[1],
+            dim_out=embed_dims[1], inter_kernel=sr_ratios[1]+1, inter_sigma=2,
+            num_heads=num_heads[1], mlp_ratio=mlp_ratios[1], qkv_bias=qkv_bias, qk_scale=qk_scale,
+            drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur + i], norm_layer=norm_layer,
+            sr_ratio=sr_ratios[0] if i == 0 else sr_ratios[1],
+            sample_ratio=0.25 if i == 0 else 1,
+            extra_ratio=0,
+            use_local=False
+        )
+            for i in range(depths[1])])
+        self.norm2 = norm_layer(embed_dims[1])
+        cur += depths[1]
+
+        self.block3 = nn.ModuleList([ResampleBlock(
+            embed_dim=embed_dims[1] if i == 0 else embed_dims[2],
+            dim_out=embed_dims[2], inter_kernel=sr_ratios[2]+1, inter_sigma=2,
+            num_heads=num_heads[2], mlp_ratio=mlp_ratios[2], qkv_bias=qkv_bias, qk_scale=qk_scale,
+            drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur + i], norm_layer=norm_layer,
+            sr_ratio=sr_ratios[1] if i == 0 else sr_ratios[2],
+            sample_ratio=0.25 if i == 0 else 1,
+            extra_ratio=0,
+            use_local=False
+        )
+            for i in range(depths[2])])
+        self.norm3 = norm_layer(embed_dims[2])
+        cur += depths[2]
+
+        self.block4 = nn.ModuleList([ResampleBlock(
+            embed_dim=embed_dims[2] if i == 0 else embed_dims[3],
+            dim_out=embed_dims[3], inter_kernel=sr_ratios[3]+1, inter_sigma=2,
+            num_heads=num_heads[3], mlp_ratio=mlp_ratios[3], qkv_bias=qkv_bias, qk_scale=qk_scale,
+            drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur + i], norm_layer=norm_layer,
+            sr_ratio=sr_ratios[2] if i == 0 else sr_ratios[3],
+            sample_ratio=0.25 if i == 0 else 1,
+            extra_ratio=0,
+            use_local=False
+        )
+            for i in range(depths[3])])
+        self.norm4 = norm_layer(embed_dims[3])
+
+        # classification head
+        # self.head = nn.Linear(embed_dims[3], num_classes) if num_classes > 0 else nn.Identity()
+        self.head = HMRHead(embed_dims[3], cfg.SMPL_MEAN_PARAMS, 3)
+
+        self.apply(self._init_weights)
+
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            trunc_normal_(m.weight, std=.02)
+            if isinstance(m, nn.Linear) and m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
+        elif isinstance(m, nn.Conv2d):
+            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+            fan_out //= m.groups
+            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
+            if m.bias is not None:
+                m.bias.data.zero_()
+
+    def reset_drop_path(self, drop_path_rate):
+        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(self.depths))]
+        cur = 0
+        for i in range(self.depths[0]):
+            self.block1[i].drop_path.drop_prob = dpr[cur + i]
+
+        cur += self.depths[0]
+        for i in range(self.depths[1]):
+            self.block2[i].drop_path.drop_prob = dpr[cur + i]
+
+        cur += self.depths[1]
+        for i in range(self.depths[2]):
+            self.block3[i].drop_path.drop_prob = dpr[cur + i]
+
+        cur += self.depths[2]
+        for i in range(self.depths[3]):
+            self.block4[i].drop_path.drop_prob = dpr[cur + i]
+
+    def freeze_patch_emb(self):
+        self.patch_embed1.requires_grad = False
+
+    @torch.jit.ignore
+    def no_weight_decay(self):
+        return {'pos_embed1', 'pos_embed2', 'pos_embed3', 'pos_embed4', 'cls_token'}  # has pos_embed may be better
+
+    def get_classifier(self):
+        return self.head
+
+    def reset_classifier(self, num_classes, global_pool=''):
+        self.num_classes = num_classes
+        self.head = nn.Linear(self.embed_dim, num_classes) if num_classes > 0 else nn.Identity()
+
+    def forward_features(self, x):
+        img = x
+        x = F.interpolate(x, scale_factor=0.5)
+
+        # # stage 1
+        # x, H, W = self.patch_embed1(x)
+        # x, loc, N_grid = self.get_loc(x, H, W)
+        # for n, blk in enumerate(self.block1):
+        #     x, loc = blk(x, loc, img, H, W, N_grid)
+        # x = self.norm1(x)
+
+        # stage 1
+
+        x, H, W = self.patch_embed1(x)
+        for i, blk in enumerate(self.block1):
+            x = blk(x, H, W)
+        x = self.norm1(x)
+        x, loc, N_grid = get_loc(x, H, W, self.grid_stride)
+
+        # stage 2
+        for n, blk in enumerate(self.block2):
+            x, loc = blk(x, loc, img, H, W, N_grid)
+            if n == 0:
+                H, W = H // 2, W // 2
+        x = self.norm2(x)
+
+        # stage 3
+        for n, blk in enumerate(self.block3):
+            x, loc = blk(x, loc, img, H, W, N_grid)
+            if n == 0:
+                H, W = H//2, W // 2
+        x = self.norm3(x)
+
+        # stage 4
+        for n, blk in enumerate(self.block4):
+            x, loc = blk(x, loc, img, H, W, N_grid)
+            if n == 0:
+                H, W = H//2, W // 2
+        x = self.norm4(x)
+
+        return x.mean(dim=1)
+
+    def forward(self, x):
+        x = self.forward_features(x)
+        x = self.head(x)
+
+        return x
+
+
+@register_model
+def mypvt2520_2_small(pretrained=False, **kwargs):
+    model = MyPVT2520_2(
         patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
         norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1], **kwargs)
     model.default_cfg = _cfg()
