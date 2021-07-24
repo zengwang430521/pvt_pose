@@ -155,13 +155,14 @@ srun -p pat_earth \
     --resume_from=logs/my2320_all/checkpoints/checkpoint_latest.pth     --img_res=448
 
 
-srun -p 3dv-share -w SH-IDC1-10-198-6-129\
-    --ntasks 8 \
+srun -p 3dv-share -w SH-IDC1-10-198-6-130\
+    --ntasks 4 \
     --job-name=debug \
-    --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=4 --kill-on-bad-exit=1 \
+    --gres=gpu:4 --ntasks-per-node=4 --cpus-per-task=1 --kill-on-bad-exit=1 \
     python -u main.py --dataset=all \
-    --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=100 \
-    --name=debug --model=hmr --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=80
+    --batch_size=64 --num_workers=4 --num_epochs=100 --summary_steps=100 \
+    --name=debug --model=mypvt2520_2_small --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=80 \
+    --resume_from=logs/my2520_all/checkpoints/checkpoint_latest.pth     --img_res=448 --use_mc --eval
 
 
     python -u main.py --dataset=spin --use_spin_fit --adaptive_weight --gtkey3d_from_mesh \
@@ -176,6 +177,13 @@ srun -p 3dv-share -w SH-IDC1-10-198-6-129 \
     --ntasks 8 \
     --job-name=mesh \
     --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=4 --kill-on-bad-exit=1 \
+    python -u main.py --dataset=all \
+    --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=100 \
+    --name=my2520g_all --model=mypvt2520g_small --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=90 \
+    --pretrain_from=/mnt/lustre/zengwang/codes/PVT/work_dirs/my2520g/checkpoint.pth \
+    --resume_from=logs/my2520g_all/checkpoints/checkpoint_latest.pth     --img_res=448 --use_mc
+
+
     python -u main.py --dataset=all \
     --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=100 \
     --name=my2520_2_all --model=mypvt2520_2_small --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=80 \
