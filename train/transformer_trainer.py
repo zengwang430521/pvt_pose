@@ -32,6 +32,7 @@ from models.my_pvt20 import mypvt20_small, mypvt20c_small
 from models.my_pvt21 import mypvt21_small
 from models.my_pvt22 import mypvt22_small
 from models.my_pvt25c import mypvt2520_small, mypvt2520_2_small
+from models.my_pvt2520_3 import mypvt2520_3_small
 from models.my_pvt25g import mypvt2520g_small, mypvt25g_small
 from models.my_pvt23 import mypvt2320_small
 
