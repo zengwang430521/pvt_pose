@@ -63,6 +63,7 @@ model_dict = {
     'mypvt2320_small': mypvt2320_small,
     'mypvt2520_small': mypvt2520_small,
     'mypvt2520_2_small': mypvt2520_2_small,
+    'mypvt2520_3_small': mypvt2520_3_small,
     'mypvt2520g_small': mypvt2520g_small,
     'mypvt25g_small': mypvt25g_small,
 
