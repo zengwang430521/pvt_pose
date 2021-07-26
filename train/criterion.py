@@ -493,7 +493,7 @@ class MeshLoss2(nn.Module):
             # Get the confidence of the GT mesh, which is used as the weight of loss item.
             # The confidence is related to the fitting error and for the data with GT SMPL parameters,
             # the confidence is 1.0
-            fit_joint_error = input_batch['fit_joint_error']
+            fit_joint_error = input_batch['fit_joint_error'].to(self.device)
             ada_weight = self.error_adaptive_weight(fit_joint_error).type(dtype)
         else:
             ada_weight = None

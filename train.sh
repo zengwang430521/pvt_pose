@@ -181,7 +181,7 @@ srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
     --batch_size=32 --num_workers=4 --num_epochs=110 --summary_steps=100 \
     --name=my2520_spin --model=mypvt2520_small --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=100 \
     --pretrain_from=data/pretrained/my2520_300.pth \
-    --resume_from=logs/my2520_spin/checkpoints/checkpoint_latest.pth     --img_res=448 --cache_mode
+    --resume_from=logs/my2520_spin/checkpoints/checkpoint_latest.pth     --img_res=448 --use_mc
 
     python -u main.py --dataset=spin
     --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=100 \
