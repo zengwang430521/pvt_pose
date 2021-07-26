@@ -1307,8 +1307,10 @@ if __name__ == '__main__':
 
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    model = mypvt25g_small(drop_path_rate=0.1).to(device)
+    model = mypvt2520g_small(drop_path_rate=0.1).to(device)
     model.reset_drop_path(0.1)
+
+    print(sum(param.numel() for param in model.parameters()))
 
     empty_input = torch.rand([2, 3, 448, 448], device=device)
     del device

@@ -99,12 +99,12 @@ class BaseDataset(Dataset):
             self.pose = fit_data['pose'].astype(np.float)
             self.betas = fit_data['betas'].astype(np.float)
             self.has_smpl = fit_data['valid_fit'].astype(np.int)
+            self.fit_joint_error = self.data['fit_errors'].astype(np.float32)
 
             if self.use_IUV:
                 self.uv_type = options.uv_type
                 self.iuvname = self.data['iuv_names']
                 self.has_dp = self.has_smpl
-                self.fit_joint_error = self.data['fit_errors'].astype(np.float32)
                 self.iuv_dir = join(self.img_dir, '{}_IUV_SPIN_fit'.format(self.uv_type))
 
         memcached = getattr(options, 'use_mc', False)
@@ -336,15 +336,16 @@ class BaseDataset(Dataset):
             item['partname'] = ''
         item['gender'] = self.gender[index]
 
+        try:
+            fit_error = self.fit_joint_error[index]
+        except AttributeError:
+            fit_error = 0.0  # For the dataset with GT mesh, fit_error is set 0
+        item['fit_joint_error'] = fit_error
+
         if self.use_IUV:
             IUV = torch.zeros([3, img.shape[1], img.shape[2]], dtype=torch.float)
             iuvname = ''
             has_dp = self.has_dp[index]
-            try:
-                fit_error = self.fit_joint_error[index]
-            except AttributeError:
-                fit_error = 0.0         # For the dataset with GT mesh, fit_error is set 0
-
             if has_dp:
                 iuvname = join(self.iuv_dir, str(self.iuvname[index]))
                 if os.path.exists(iuvname):
@@ -357,7 +358,6 @@ class BaseDataset(Dataset):
             item['gt_iuv'] = IUV
             item['iuvname'] = iuvname
             item['has_dp'] = has_dp
-            item['fit_joint_error'] = fit_error
 
         return item
 
