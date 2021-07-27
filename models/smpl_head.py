@@ -238,7 +238,6 @@ class CMRHead(nn.Module):
 
     def __init__(self, in_channels, use_cpu_svd=True):
         super().__init__()
-        # 1723 is the number of vertices in the subsampled SMPL mesh
         self.layers = nn.Sequential(FCBlock(in_channels, 1024),
                                     FCResBlock(1024, 1024),
                                     FCResBlock(1024, 1024),
@@ -280,6 +279,7 @@ class CMRHead(nn.Module):
         out = (rotmat, betas, camera)
         return out
 
+
 def batch_svd(A):
     """Wrapper around torch.svd that works when the input is a batch of matrices."""
     U_list = []
@@ -294,3 +294,9 @@ def batch_svd(A):
     S = torch.stack(S_list, dim=0)
     V = torch.stack(V_list, dim=0)
     return U, S, V
+
+
+head_dict = {
+    'hmr': HMRHead,
+    'cmr': CMRHead
+}

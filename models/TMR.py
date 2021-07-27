@@ -21,7 +21,8 @@ def build_model(options):
                 drop_rate=0.0,
                 drop_path_rate=0.1,
                 # drop_block_rate=None,
-                alpha=getattr(options, 'pvt_alpha', 1)
+                alpha=getattr(options, 'pvt_alpha', 1),
+                head_type=getattr(options, 'head_type', 'hmr')
             )
 
 
