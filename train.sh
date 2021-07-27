@@ -177,6 +177,13 @@ srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
     --ntasks 8 \
     --job-name=spin \
     --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=4 --kill-on-bad-exit=1 \
+    python -u main.py --dataset=all --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=100 \
+    --name=my20_2_all --model=mypvt20_2_small --opt=adamw --lr=2.5e-4 --wd=1e-4 --lr_drop=90 \
+    --resume_from=logs/my20_2_all/checkpoints/checkpoint_latest.pth     --img_res=224 \
+    --pretrain_from=data/pretrained/my20_300.pth
+
+
+
     python -u main.py --dataset=spin --use_spin_fit --adaptive_weight --gtkey3d_from_mesh \
     --batch_size=32 --num_workers=4 --num_epochs=110 --summary_steps=100 \
     --name=my2520_spin --model=mypvt2520_small --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=100 \
