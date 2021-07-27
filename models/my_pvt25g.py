@@ -6,7 +6,7 @@ from functools import partial
 from models.pvt import ( Mlp, DropPath, to_2tuple, trunc_normal_,register_model, _cfg)
 import math
 import matplotlib.pyplot as plt
-from models.smpl_head import HMRHead
+from models.smpl_head import HMRHead, CMRHead
 import utils.config as cfg
 
 vis = False

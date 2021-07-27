@@ -234,6 +234,14 @@ class FCResBlock(nn.Module):
         return F.relu(x + self.fc_block(x))
 
 
+
+try:
+    from torch_batch_svd import svd
+    gpu_svd = True
+except (ImportError, ModuleNotFoundError):
+    gpu_svd = False
+
+
 class CMRHead(nn.Module):
 
     def __init__(self, in_channels, use_cpu_svd=True):
@@ -261,18 +269,29 @@ class CMRHead(nn.Module):
 
         rotmat = rotmat.view(-1, 3, 3).contiguous()
         orig_device = rotmat.device
-        if self.use_cpu_svd:
-            rotmat = rotmat.cpu()
-            U, S, V = batch_svd(rotmat)
-            U, S, V = U.to(orig_device), S.to(orig_device), V.to(orig_device)
+
+
+        if gpu_svd:
+            U, S, V = svd(rotmat)
         else:
-            U, S, V = batch_svd(rotmat)
+            if self.use_cpu_svd:
+                rotmat = rotmat.cpu()
+                U, S, V = batch_svd(rotmat)
+                U, S, V = U.to(orig_device), S.to(orig_device), V.to(orig_device)
+            else:
+                U, S, V = batch_svd(rotmat)
 
         rotmat = torch.matmul(U, V.transpose(1, 2))
-        det = torch.zeros(rotmat.shape[0], 1, 1).to(rotmat.device)
-        with torch.no_grad():
-            for i in range(rotmat.shape[0]):
-                det[i] = torch.det(rotmat[i])
+        # det = torch.zeros(rotmat.shape[0], 1, 1).to(rotmat.device)
+        # with torch.no_grad():
+        #     for i in range(rotmat.shape[0]):
+        #         det[i] = torch.det(rotmat[i])
+        # det2 = torch.det(rotmat)[:, None, None]
+        # err = det2 - det
+        # err = err.sum()
+
+        det = torch.det(rotmat)[:, None, None]
+
         rotmat = rotmat * det
         rotmat = rotmat.view(batch_size, 24, 3, 3)
         rotmat = rotmat.to(orig_device)
