@@ -6,7 +6,7 @@ from functools import partial
 from models.pvt import ( Mlp, DropPath, to_2tuple, trunc_normal_,register_model, _cfg)
 import math
 import matplotlib.pyplot as plt
-from models.smpl_head import HMRHead, CMRHead
+from models.smpl_head import build_smpl_head
 import utils.config as cfg
 
 vis = False
@@ -990,8 +990,9 @@ class MyPVT25g(nn.Module):
 
         # classification head
         # self.head = nn.Linear(embed_dims[3], num_classes) if num_classes > 0 else nn.Identity()
-        self.head = HMRHead(embed_dims[3], cfg.SMPL_MEAN_PARAMS, 3)
 
+        self.head_type = kwargs['head_type'] if 'head_type' in kwargs else 'hmr'
+        self.head = build_smpl_head(embed_dims[3], self.head_type)
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
@@ -1081,6 +1082,8 @@ class MyPVT25g(nn.Module):
                 H, W = H//2, W // 2
         x = self.norm4(x)
 
+        if self.head_type == 'tcmr':
+            return x
         return x.mean(dim=1)
 
     def forward(self, x):
@@ -1187,8 +1190,9 @@ class MyPVT2520g(nn.Module):
 
         # classification head
         # self.head = nn.Linear(embed_dims[3], num_classes) if num_classes > 0 else nn.Identity()
-        self.head = HMRHead(embed_dims[3], cfg.SMPL_MEAN_PARAMS, 3)
 
+        self.head_type = kwargs['head_type'] if 'head_type' in kwargs else 'hmr'
+        self.head = build_smpl_head(embed_dims[3], self.head_type)
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
@@ -1278,6 +1282,8 @@ class MyPVT2520g(nn.Module):
                 H, W = H//2, W // 2
         x = self.norm4(x)
 
+        if self.head_type == 'tcmr':
+            return x
         return x.mean(dim=1)
 
     def forward(self, x):

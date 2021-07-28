@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from functools import partial
 
 from models.pvt import ( Mlp, Attention, PatchEmbed, Block, DropPath, to_2tuple, trunc_normal_,register_model, _cfg)
-from models.smpl_head import HMRHead, CMRHead
+from models.smpl_head import build_smpl_head
 import utils.config as cfg
 
 import math
@@ -377,8 +377,9 @@ class MyPVT9(nn.Module):
 
         # classification head
         # self.head = nn.Linear(embed_dims[3], num_classes) if num_classes > 0 else nn.Identity()
-        self.head = HMRHead(embed_dims[3], cfg.SMPL_MEAN_PARAMS, 3)
 
+        self.head_type = kwargs['head_type'] if 'head_type' in kwargs else 'hmr'
+        self.head = build_smpl_head(embed_dims[3], self.head_type)
         # init weights
         trunc_normal_(self.pos_embed1, std=.02)
         trunc_normal_(self.pos_embed2, std=.02)

@@ -248,8 +248,9 @@ class PyramidVisionTransformerImpr(nn.Module):
 
         # classification head
         # self.head = nn.Linear(embed_dims[3], num_classes) if num_classes > 0 else nn.Identity()
-        self.head = HMRHead(embed_dims[3], cfg.SMPL_MEAN_PARAMS, 3)
 
+        self.head_type = kwargs['head_type'] if 'head_type' in kwargs else 'hmr'
+        self.head = build_smpl_head(embed_dims[3], self.head_type)
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
@@ -337,6 +338,8 @@ class PyramidVisionTransformerImpr(nn.Module):
             x = blk(x, H, W)
         x = self.norm4(x)
 
+        if self.head_type == 'tcmr':
+            return x
         return x.mean(dim=1)
 
     def forward(self, x):

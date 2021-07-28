@@ -523,7 +523,6 @@ class MyPVT(nn.Module):
         self.head_type = kwargs['head_type'] if 'head_type' in kwargs else 'hmr'
         self.head = build_smpl_head(embed_dims[3], self.head_type)
 
-
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
