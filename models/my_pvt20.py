@@ -6,7 +6,7 @@ from functools import partial
 from models.pvt import ( Mlp, Attention, PatchEmbed, Block, DropPath, to_2tuple, trunc_normal_,register_model, _cfg)
 import math
 import matplotlib.pyplot as plt
-from models.smpl_head import HMRHead, CMRHead
+from models.smpl_head import build_smpl_head
 import utils.config as cfg
 
 vis = False
@@ -520,11 +520,9 @@ class MyPVT(nn.Module):
 
         # classification head
         # self.head = nn.Linear(embed_dims[3], num_classes) if num_classes > 0 else nn.Identity()
-        head_type = kwargs['head_type'] if 'head_type' in kwargs else 'hmr'
-        if head_type == 'hmr':
-            self.head = HMRHead(embed_dims[3], cfg.SMPL_MEAN_PARAMS, 3)
-        else:
-            self.head = CMRHead(embed_dims[3])
+        self.head_type = kwargs['head_type'] if 'head_type' in kwargs else 'hmr'
+        self.head = build_smpl_head(embed_dims[3], self.head_type)
+
 
         self.apply(self._init_weights)
 
@@ -643,6 +641,8 @@ class MyPVT(nn.Module):
             x = blk(x, x, loc, loc, H, W)
         x = self.norm4(x)
 
+        if self.head_type == 'tcmr':
+            return x
         return x.mean(dim=1)
 
     def forward(self, x):
@@ -813,27 +813,17 @@ def mypvt20_small(pretrained=False, **kwargs):
     return model
 
 
-def mypvt20c_small(pretrained=False, **kwargs):
-    model = MyPVT(
-        patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1], **kwargs)
-    model.default_cfg = _cfg()
-    model.head = CMRHead(512)
-    return model
-
 
 # For test
 if __name__ == '__main__':
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    model = mypvt20_small(drop_path_rate=0.1).to(device)
+    model = mypvt20_small(drop_path_rate=0.1, head_type='tcmr').to(device)
     model.reset_drop_path(0.1)
 
     empty_input = torch.rand([2, 3, 224, 224], device=device)
     del device
 
     output = model(empty_input)
-    tmp = output.sum()
-    print(tmp)
 
     print('Finish')
 

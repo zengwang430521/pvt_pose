@@ -110,6 +110,7 @@ def xavier_init(module, gain=1, bias=0, distribution='normal'):
         nn.init.constant_(module.bias, bias)
 
 
+import utils.config as cfg
 class HMRHead(nn.Module):
     """SMPL parameters regressor head of simple baseline paper
     ref: Angjoo Kanazawa. ``End-to-end Recovery of Human Shape and Pose''.
@@ -121,7 +122,7 @@ class HMRHead(nn.Module):
         n_iter (int): The iterations of estimating delta parameters
     """
 
-    def __init__(self, in_channels, smpl_mean_params=None, n_iter=3):
+    def __init__(self, in_channels, smpl_mean_params=cfg.SMPL_MEAN_PARAMS, n_iter=3):
         super().__init__()
 
         self.in_channels = in_channels
@@ -323,7 +324,189 @@ def batch_svd(A):
     return U, S, V
 
 
+
+# Transformer based head
+from models.pvt_utils.layers import DropPath, to_2tuple, trunc_normal_
+
+
+class Mlp(nn.Module):
+    def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.):
+        super().__init__()
+        out_features = out_features or in_features
+        hidden_features = hidden_features or in_features
+        self.fc1 = nn.Linear(in_features, hidden_features)
+        self.act = act_layer()
+        self.fc2 = nn.Linear(hidden_features, out_features)
+        self.drop = nn.Dropout(drop)
+
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.act(x)
+        x = self.drop(x)
+        x = self.fc2(x)
+        x = self.drop(x)
+        return x
+
+
+class Attention(nn.Module):
+    def __init__(self, dim, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0., sr_ratio=1):
+        super().__init__()
+        assert dim % num_heads == 0, f"dim {dim} should be divided by num_heads {num_heads}."
+
+        self.dim = dim
+        self.num_heads = num_heads
+        head_dim = dim // num_heads
+        self.scale = qk_scale or head_dim ** -0.5
+
+        self.q = nn.Linear(dim, dim, bias=qkv_bias)
+        self.kv = nn.Linear(dim, dim * 2, bias=qkv_bias)
+        self.attn_drop = nn.Dropout(attn_drop)
+        self.proj = nn.Linear(dim, dim)
+        self.proj_drop = nn.Dropout(proj_drop)
+
+        self.apply(self._init_weights)
+
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            trunc_normal_(m.weight, std=.02)
+            if isinstance(m, nn.Linear) and m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
+        elif isinstance(m, nn.Conv2d):
+            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+            fan_out //= m.groups
+            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
+            if m.bias is not None:
+                m.bias.data.zero_()
+
+    def forward(self, x, x_source):
+        B, N, C = x.shape
+        q = self.q(x).reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3).contiguous()
+
+        _, Ns, _ = x_source.shape
+        kv = self.kv(x_source).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1,
+                                                                                              4).contiguous()
+        k, v = kv[0], kv[1]
+
+        attn = (q @ k.transpose(-2, -1)) * self.scale
+        attn = attn.softmax(dim=-1)
+        attn = self.attn_drop(attn)
+
+        x = (attn @ v).transpose(1, 2).reshape(B, N, C)
+        x = self.proj(x)
+        x = self.proj_drop(x)
+        return x
+
+
+class Block(nn.Module):
+
+    def __init__(self, dim, num_heads, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop=0., attn_drop=0.,
+                 drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, sr_ratio=1, dim_out=None):
+        super().__init__()
+        self.norm1 = norm_layer(dim)
+        self.norm1_source = norm_layer(dim)
+        self.attn = Attention(
+            dim,
+            num_heads=num_heads, qkv_bias=qkv_bias, qk_scale=qk_scale,
+            attn_drop=attn_drop, proj_drop=drop, sr_ratio=sr_ratio)
+        # NOTE: drop path for stochastic depth, we shall see if this is better than dropout here
+        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+        self.norm2 = norm_layer(dim)
+        mlp_hidden_dim = int(dim * mlp_ratio)
+        self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, out_features=dim_out,
+                       act_layer=act_layer, drop=drop)
+
+    def forward(self, x, x_source):
+        x = x + self.drop_path(self.attn(self.norm1(x), self.norm1_source(x_source)))
+        x = x + self.drop_path(self.mlp(self.norm2(x)))
+        return x
+
+
+import torch.nn.init as init
+
+class PoseLayer(nn.Module):
+    def __init__(self, in_channels=512, out_channels=9, n=24):
+        super().__init__()
+        self.weight = nn.Parameter(torch.Tensor(n, in_channels, out_channels))
+        self.bias = nn.Parameter(torch.Tensor(n, out_channels))
+        self.reset_parameters()
+
+    def reset_parameters(self) -> None:
+        init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+        fan_in, _ = init._calculate_fan_in_and_fan_out(self.weight)
+        bound = 1 / math.sqrt(fan_in)
+        init.uniform_(self.bias, -bound, bound)
+
+    def forward(self, x):
+        x = (x[..., None] * self.weight[None, ...]).sum(dim=2)
+        x = x + self.bias[None, ...]
+        return x
+
+
+class TCMRHead(nn.Module):
+
+    def __init__(self, in_channels=512, hidden_dim=512, n_block=3, use_cpu_svd=True):
+        super().__init__()
+        self.use_cpu_svd = use_cpu_svd
+        self.num_queries = 24 + 1 + 1
+        self.in_channels = in_channels
+        self.query_embed = nn.Embedding(self.num_queries, in_channels)
+        self.pre_block = Block(dim=in_channels, num_heads=8, dim_out=hidden_dim)
+        self.blocks = nn.ModuleList([Block(dim=hidden_dim, num_heads=8) for _ in range(n_block-1)])
+
+        # self.pose_layers = nn.ModuleList([nn.Linear(hidden_dim, 3*3) for _ in range(24)])
+        self.pose_layers = PoseLayer(hidden_dim, 3*3, 24)
+
+        self.shape_layer = nn.Linear(hidden_dim, 10)
+        self.camera_layer = nn.Linear(hidden_dim, 3)
+
+    def forward(self, x):
+        B = x.shape[0]
+        q = self.query_embed.weight[None, :, :].expand([B, -1, -1])
+        x = self.pre_block(q, x)
+        for block in self.blocks:
+            x = block(x, x)
+        B, N, C = x.shape
+
+        # rotmat = []
+        # for n in range(24):
+        #     rotmat.append(self.pose_layers[n](x[:, n, :]))
+        # rotmat = torch.stack(rotmat, dim=1)
+
+        rotmat = self.pose_layers(x[:, :24, :])
+
+        rotmat = rotmat.view(-1, 3, 3).contiguous()
+        orig_device = rotmat.device
+        if gpu_svd:
+            U, S, V = svd(rotmat)
+        else:
+            if self.use_cpu_svd:
+                rotmat = rotmat.cpu()
+                U, S, V = batch_svd(rotmat)
+                U, S, V = U.to(orig_device), S.to(orig_device), V.to(orig_device)
+            else:
+                U, S, V = batch_svd(rotmat)
+
+        rotmat = torch.matmul(U, V.transpose(1, 2))
+        det = torch.det(rotmat)[:, None, None]
+        rotmat = rotmat * det
+        rotmat = rotmat.view(B, 24, 3, 3)
+        rotmat = rotmat.to(orig_device)
+
+        betas = self.shape_layer(x[:, -2, :])
+        camera = self.camera_layer(x[:, -1, :])
+        out = (rotmat, betas, camera)
+        return out
+
+
 head_dict = {
     'hmr': HMRHead,
-    'cmr': CMRHead
+    'cmr': CMRHead,
+    'tcmr': TCMRHead
 }
+
+
+def build_smpl_head(in_channels=512, head_type='hmr'):
+    return head_dict[head_type](in_channels=in_channels)
