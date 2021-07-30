@@ -132,17 +132,18 @@ class MyDWConv(nn.Module):
     def __init__(self, dim=768):
         super().__init__()
         self.dwconv = nn.Conv2d(dim, dim, 3, 1, 1, bias=True, groups=dim)
-        self.dwconv2 = nn.Conv1d(dim, dim, 1, 1, 0, bias=False, groups=dim)
+        # self.dwconv2 = nn.Conv1d(dim, dim, 1, 1, 0, bias=False, groups=dim)
 
     def forward(self, x, loc, H, W, kernel_size, sigma):
         B, N, C = x.shape
         x1 = token2map(x, loc, [H, W], kernel_size=kernel_size, sigma=sigma)
         x1 = self.dwconv(x1)
         x1 = map2token(x1, loc)
-        x = x.flatten(0, 1).unsqueeze(-1)
-        x = self.dwconv2(x).squeeze(-1)
-        x = x.reshape(B, N, C)
-        x = x + x1
+        # x = x.flatten(0, 1).unsqueeze(-1)
+        # x = self.dwconv2(x).squeeze(-1)
+        # x = x.reshape(B, N, C)
+        # x = x + x1
+        x = x1
         return x
 
 
@@ -387,7 +388,7 @@ class ResampleBlock(nn.Module):
         self.HR_res = HR_res
         if dim_out != embed_dim:
             self.pre_conv = nn.Conv2d(embed_dim, dim_out, kernel_size=3, stride=1, padding=1)
-            self.pre_conv2 = nn.Linear(embed_dim, dim_out, bias=False)
+            # self.pre_conv2 = nn.Linear(embed_dim, dim_out, bias=False)
         else:
             self.pre_conv = None
 
@@ -448,23 +449,25 @@ class ResampleBlock(nn.Module):
         if self.pre_conv is not None:
             x_map = token2map(x, loc, [H, W], self.inter_kernel, self.inter_sigma)
             x_map = self.pre_conv(x_map)
-            x1 = map2token(x_map, loc)
-            x = self.pre_conv2(x)
-            x = x + x1
+            x = map2token(x_map, loc)
+            # x1 = map2token(x_map, loc)
+            # x = self.pre_conv2(x)
+            # x = x + x1
 
         B, N, C = x.shape
 
-        # confidence based sampling
-        if self.use_conf:
-            x = self.conf_norm(x)
-            conf = self.conf(x)
-        else:
-            conf = x.new_zeros([B, N, 1])
+        # sample_num = max(math.ceil((N-N_grid) * self.sample_ratio), 0)
+        sample_num = max(math.ceil(N * self.sample_ratio), 0) if self.sample_ratio < 1 else N-N_grid
 
-        sample_num = max(math.ceil((N-N_grid) * self.sample_ratio), 0)
         x_grid, loc_grid = x[:, :N_grid, :], loc[:, :N_grid, :]
         x_ada, loc_ada = x[:, N_grid:, :], loc[:, N_grid:, :]
-        conf_ada = conf[:, N_grid:, :]
+
+        # confidence based sampling
+        if self.use_conf:
+            conf = self.conf(self.conf_norm(x))
+            conf_ada = conf[:, N_grid:, :]
+        else:
+            conf = None
 
         # extra points
         if self.extra_ratio > 0:
@@ -483,21 +486,24 @@ class ResampleBlock(nn.Module):
             x_map = token2map(x, loc, [H, W], self.inter_kernel, self.inter_sigma)
             x_down = map2token(x_map, loc_down)
         else:
-            index_down = gumble_top_k(conf_ada, sample_num, dim=1, T=1)
-            loc_down = torch.gather(loc_ada, 1, index_down.expand([B, sample_num, 2]))
-            x_down = torch.gather(x_ada, 1, index_down.expand([B, sample_num, C]))
+            if self.sample_ratio < 1:
+                index_down = gumble_top_k(conf_ada, sample_num, dim=1, T=1)
+
+                loc_down = torch.gather(loc_ada, 1, index_down.expand([B, sample_num, 2]))
+                x_down = torch.gather(x_ada, 1, index_down.expand([B, sample_num, C]))
+            else:
+                x_down, loc_down = x_ada, loc_ada
 
         # attention block
         x_down = torch.cat([x_grid, x_down], dim=1)
         loc_down = torch.cat([loc_grid, loc_down], dim=1)
-        x_down = self.norm1(x_down)
-        x_down = x_down + self.drop_path(self.attn(x_down, x, loc, H, W, conf))
 
-        x_down = self.norm2(x_down)
+        x_down = x_down + self.drop_path(self.attn(self.norm1(x_down), self.norm1(x), loc, H, W, conf))
+
         kernel_size = self.attn.sr_ratio + 1
-        if self.sample_ratio <= 0.25:
-            H, W = H // 2, W // 2
-        x_down = x_down + self.drop_path(self.mlp(x_down, loc_down, H, W, kernel_size, 2))
+        # if self.sample_ratio <= 0.25:
+        #     H, W = H // 2, W // 2
+        x_down = x_down + self.drop_path(self.mlp(self.norm2(x_down), loc_down, H, W, kernel_size, 2))
 
         # extra local feature
         if self.use_local:
@@ -632,7 +638,7 @@ def gumble_top_k(x, k, dim, T=1, p_value=1e-6):
     noise = -1 * (noise + p_value).log()
     noise = -1 * (noise + p_value).log()
     # add
-    x = x / T + noise
+    x = x / T + noise   # * 0; print('debug')
     _, index_k = torch.topk(x, k, dim)
     return index_k
 
@@ -778,11 +784,11 @@ def show_conf(conf, loc):
         ax.imshow(conf_map[0, 0].detach().cpu())
 
 
-class MyPVT2520_3(nn.Module):
+class MyPVT2520_4(nn.Module):
     def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dims=[64, 128, 256, 512],
                  num_heads=[1, 2, 4, 8], mlp_ratios=[4, 4, 4, 4], qkv_bias=False, qk_scale=None, drop_rate=0.,
                  attn_drop_rate=0., drop_path_rate=0., norm_layer=nn.LayerNorm,
-                 depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1], pretrained=None, alpha=1, **kwargs):
+                 depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1], pretrained=None, **kwargs):
         super().__init__()
 
         img_size = img_size // 2
@@ -824,7 +830,9 @@ class MyPVT2520_3(nn.Module):
 
         self.block2 = nn.ModuleList([ResampleBlock(
             embed_dim=embed_dims[0] if i == 0 else embed_dims[1],
-            dim_out=embed_dims[1], inter_kernel=sr_ratios[1]+1, inter_sigma=2,
+            dim_out=embed_dims[1],
+            inter_kernel=sr_ratios[0]+1 if i == 0 else sr_ratios[1]+1,
+            inter_sigma=2,
             num_heads=num_heads[1], mlp_ratio=mlp_ratios[1], qkv_bias=qkv_bias, qk_scale=qk_scale,
             drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur + i], norm_layer=norm_layer,
             sr_ratio=sr_ratios[0] if i == 0 else sr_ratios[1],
@@ -838,7 +846,9 @@ class MyPVT2520_3(nn.Module):
 
         self.block3 = nn.ModuleList([ResampleBlock(
             embed_dim=embed_dims[1] if i == 0 else embed_dims[2],
-            dim_out=embed_dims[2], inter_kernel=sr_ratios[2]+1, inter_sigma=2,
+            dim_out=embed_dims[2],
+            inter_kernel=sr_ratios[1] + 1 if i == 0 else sr_ratios[2] + 1,
+            inter_sigma=2,
             num_heads=num_heads[2], mlp_ratio=mlp_ratios[2], qkv_bias=qkv_bias, qk_scale=qk_scale,
             drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur + i], norm_layer=norm_layer,
             sr_ratio=sr_ratios[1] if i == 0 else sr_ratios[2],
@@ -852,7 +862,9 @@ class MyPVT2520_3(nn.Module):
 
         self.block4 = nn.ModuleList([ResampleBlock(
             embed_dim=embed_dims[2] if i == 0 else embed_dims[3],
-            dim_out=embed_dims[3], inter_kernel=sr_ratios[3]+1, inter_sigma=2,
+            dim_out=embed_dims[3],
+            inter_kernel=sr_ratios[2] + 1 if i == 0 else sr_ratios[3] + 1,
+            inter_sigma=2,
             num_heads=num_heads[3], mlp_ratio=mlp_ratios[3], qkv_bias=qkv_bias, qk_scale=qk_scale,
             drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr[cur + i], norm_layer=norm_layer,
             sr_ratio=sr_ratios[2] if i == 0 else sr_ratios[3],
@@ -865,9 +877,9 @@ class MyPVT2520_3(nn.Module):
 
         # classification head
         # self.head = nn.Linear(embed_dims[3], num_classes) if num_classes > 0 else nn.Identity()
-
         self.head_type = kwargs['head_type'] if 'head_type' in kwargs else 'hmr'
         self.head = build_smpl_head(embed_dims[3], self.head_type)
+
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
@@ -919,7 +931,8 @@ class MyPVT2520_3(nn.Module):
 
     def forward_features(self, x):
         img = x
-        x = F.interpolate(x, scale_factor=0.5)
+        # x = F.interpolate(x, scale_factor=0.5)
+        x = F.avg_pool2d(x, kernel_size=2)
 
         # # stage 1
         # x, H, W = self.patch_embed1(x)
@@ -956,7 +969,6 @@ class MyPVT2520_3(nn.Module):
             if n == 0:
                 H, W = H//2, W // 2
         x = self.norm4(x)
-
         if self.head_type == 'tcmr':
             return x
         return x.mean(dim=1)
@@ -969,8 +981,8 @@ class MyPVT2520_3(nn.Module):
 
 
 @register_model
-def mypvt2520_3_small(pretrained=False, **kwargs):
-    model = MyPVT2520_3(
+def mypvt2520_4_small(pretrained=False, **kwargs):
+    model = MyPVT2520_4(
         patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
         norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1], **kwargs)
     model.default_cfg = _cfg()
@@ -981,15 +993,13 @@ def mypvt2520_3_small(pretrained=False, **kwargs):
 # For test
 if __name__ == '__main__':
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    model = mypvt2520_3_small(drop_path_rate=0.1).to(device)
-    model.reset_drop_path(0.1)
 
-    empty_input = torch.rand([2, 3, 448, 448], device=device)
-    del device
+    model1 = mypvt2520_4_small(drop_path_rate=0.0).to(device)
+    model1.reset_drop_path(0.)
+    pre_dict = torch.load('work_dirs/my20_s2/my20_300_pre.pth')['model']
+    model1.load_state_dict(pre_dict)
 
-    output = model(empty_input)
-    tmp = output.sum()
-    print(tmp)
-
+    x = torch.ones([1, 3, 448, 448]).to(device)
+    tmp = model1.forward(x)
     print('Finish')
 

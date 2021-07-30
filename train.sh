@@ -198,12 +198,28 @@ srun -p 3dv-share -w SH-IDC1-10-198-6-132 \
     --resume_from=logs/my20_all_cmr/checkpoints/checkpoint_latest.pth     --img_res=224 \
     --pretrain_from=data/pretrained/my20_300.pth --use_mc
 
+srun -p 3dv-share -w SH-IDC1-10-198-6-129\
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
-srun -p 3dv-share -w SH-IDC1-10-198-6-129 \
     --ntasks 8 --job-name=debug \
     --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=4 --kill-on-bad-exit=1 \
+    python -u main.py --dataset=all --batch_size=32 --num_workers=4 --num_epochs=60 --summary_steps=100 \
+    --name=my20_2_all2 --model=mypvt20_2_small --opt=adamw --lr=2.5e-4 --wd=1e-4 --lr_drop=50 \
+    --resume_from=logs/my20_2_all/checkpoints/checkpoint0049.pth     --img_res=224 \
+    --pretrain_from=data/pretrained/my20_300.pth --use_mc
+
+    python -u main.py --dataset=all --batch_size=32 --num_workers=4 --num_epochs=60 --summary_steps=100 \
+    --name=my20_2f_all --model=mypvt20_2_small --opt=adamw --lr=2.5e-4 --wd=1e-4 --lr_drop=50 \
+    --resume_from=logs/my20_2f_all/checkpoints/checkpoint_latest.pth     --img_res=224 \
+    --pretrain_from=data/pretrained/my20_2_330.pth --use_mc
+
+    python -u main.py --dataset=spin --use_spin_fit --adaptive_weight --gtkey3d_from_mesh \
+    --batch_size=32 --num_workers=4 --num_epochs=110 --summary_steps=100 \
+    --name=my2520_spin --model=mypvt2520_small --opt=adamw --lr=2.5e-4 --wd=0.05 --lr_drop=100 \
+    --pretrain_from=data/pretrained/my2520_300.pth \
+    --resume_from=logs/my2520_spin/checkpoints/checkpoint_latest.pth     --img_res=448 --use_mc
+
     python -u main.py --dataset=all --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=100 \
-    --name=my20_2_all_tcmr --model=mypvt20_2_small head_type=tcmr --opt=adamw --lr=2.5e-4 --wd=1e-4 --lr_drop=90 \
+    --name=my20_2_all_tcmr --model=mypvt20_2_small --head_type=tcmr --opt=adamw --lr=2.5e-4 --wd=1e-4 --lr_drop=90 \
     --resume_from=logs/my20_2_all_tcmr/checkpoints/checkpoint_latest.pth     --img_res=224 \
     --pretrain_from=data/pretrained/my20_300.pth --use_mc
 
