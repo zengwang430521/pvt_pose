@@ -35,6 +35,8 @@ from models.my_pvt22 import mypvt22_small
 from models.my_pvt25c import mypvt2520_small, mypvt2520_2_small
 from models.my_pvt2520_3 import mypvt2520_3_small
 from models.my_pvt2520_4 import mypvt2520_4_small
+from models.my_pvt2520_7 import mypvt2520_7_small
+from models.my_pvt2520_8 import mypvt2520_8_small
 from models.my_pvt25g import mypvt2520g_small, mypvt25g_small
 from models.my_pvt23 import mypvt2320_small
 
@@ -67,6 +69,8 @@ model_dict = {
     'mypvt2520_small': mypvt2520_small,
     'mypvt2520_2_small': mypvt2520_2_small,
     'mypvt2520_4_small': mypvt2520_4_small,
+    'mypvt2520_7_small': mypvt2520_7_small,
+    'mypvt2520_8_small': mypvt2520_8_small,
     'mypvt2520g_small': mypvt2520g_small,
     'mypvt25g_small': mypvt25g_small,
 
