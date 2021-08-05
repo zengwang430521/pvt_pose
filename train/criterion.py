@@ -995,10 +995,10 @@ class MeshLoss3(MeshLoss2):
         self.pose_prior = MaxMixturePrior(prior_folder='data',
                                           num_gaussians=8,
                                           dtype=torch.float32).to(device)
-        self.num_iters = 50
-        self.step_size = 1e-2
+        self.num_iters = options.iter_simplify
+        self.step_size = options.step_simplify
         self.focal_length = 5000.0
-        self.loss_threhold = 100.0 * (self.options.img_res / 224.0) ** 2
+        self.loss_threhold = options.thre_simplify * (self.options.img_res / 224.0) ** 2
 
         self.smplx = _SMPL(config.SMPL_MODEL_DIR,
                          create_transl=False).to(self.device)
