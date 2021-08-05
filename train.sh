@@ -206,7 +206,7 @@ srun -p 3dv-share -x SH-IDC1-10-198-6-[132-135] \
     --gres=gpu:2 --ntasks-per-node=2 --cpus-per-task=4 --kill-on-bad-exit=1 \
     python -u main.py --dataset=spin \
     --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=100 \
-    --name=my20_2f_opt --run_simplify --model=mypvt20_2_small --opt=adamw --lr=2.5e-4 --wd=1e-4 --lr_drop=90 \
+    --name=debug --run_simplify --model=mypvt20_2_small --opt=adamw --lr=2.5e-4 --wd=1e-4 --lr_drop=90 \
     --resume_from=logs/my20_2f_opt/checkpoints/checkpoint_latest.pth     --img_res=224 \
     --pretrain_from=data/pretrained/my20_2_330.pth --use_mc
 
