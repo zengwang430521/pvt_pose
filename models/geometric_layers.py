@@ -77,3 +77,48 @@ def rot6d_to_rotmat(x):
     b2 = F.normalize(a2 - torch.einsum('bi,bi->b', b1, a2).unsqueeze(-1) * b1)
     b3 = torch.cross(b1, b2)
     return torch.stack((b1, b2, b3), dim=-1)
+
+
+def proj_2d(X, camera, focal_length=5000, img_res=224):
+    batch_size = X.shape[0]
+    device = X.device
+    cam_t = torch.stack([camera[:, 1],
+                         camera[:, 2],
+                         2 * focal_length / (img_res * camera[:, 0] + 1e-9)],
+                        dim=-1)
+    camera_center = 0.5 * img_res * torch.ones(batch_size, 2, device=device)
+
+    rotation = torch.eye(3, device=device).unsqueeze(0).expand(batch_size, -1, -1)
+    x_2d = perspective_projection(X, rotation, cam_t, focal_length, camera_center)
+    x_2d = 2 * (x_2d / img_res) - 1
+    return x_2d
+
+def perspective_projection(points, rotation, translation,
+                           focal_length, camera_center):
+    """
+    This function computes the perspective projection of a set of points.
+    Input:
+        points (bs, N, 3): 3D points
+        rotation (bs, 3, 3): Camera rotation
+        translation (bs, 3): Camera translation
+        focal_length (bs,) or scalar: Focal length
+        camera_center (bs, 2): Camera center
+    """
+    batch_size = points.shape[0]
+    K = torch.zeros([batch_size, 3, 3], device=points.device)
+    K[:,0,0] = focal_length
+    K[:,1,1] = focal_length
+    K[:,2,2] = 1.
+    K[:,:-1, -1] = camera_center
+
+    # Transform points
+    points = torch.einsum('bij,bkj->bki', rotation, points)
+    points = points + translation.unsqueeze(1)
+
+    # Apply perspective distortion
+    projected_points = points / points[:,:,-1].unsqueeze(-1)
+
+    # Apply camera intrinsics
+    projected_points = torch.einsum('bij,bkj->bki', K, projected_points)
+
+    return projected_points[:, :, :-1]

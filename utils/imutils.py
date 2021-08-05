@@ -78,6 +78,7 @@ def crop(img, center, scale, res, rot=0):
     new_img = scipy.misc.imresize(new_img, res)
     return new_img
 
+
 def uncrop(img, center, scale, orig_shape, rot=0, is_rgb=True):
     """'Undo' the image cropping/resizing.
     This function is used when evaluating mask/part segmentation.
@@ -124,12 +125,25 @@ def flip_img(img):
     img = np.fliplr(img)
     return img
 
+# def flip_kp(kp):
+#     """Flip keypoints."""
+#     flipped_parts = [5, 4, 3, 2, 1, 0, 11, 10, 9, 8, 7, 6, 12, 13, 14, 15, 16, 17, 18, 19, 21, 20, 23, 22]
+#     kp = kp[flipped_parts]
+#     kp[:,0] = - kp[:,0]
+#     return kp
+
+
+from utils import constants
 def flip_kp(kp):
     """Flip keypoints."""
-    flipped_parts = [5, 4, 3, 2, 1, 0, 11, 10, 9, 8, 7, 6, 12, 13, 14, 15, 16, 17, 18, 19, 21, 20, 23, 22]
+    if len(kp) == 24:
+        flipped_parts = constants.J24_FLIP_PERM
+    elif len(kp) == 49:
+        flipped_parts = constants.J49_FLIP_PERM
     kp = kp[flipped_parts]
     kp[:,0] = - kp[:,0]
     return kp
+
 
 def flip_pose(pose):
     """Flip pose.

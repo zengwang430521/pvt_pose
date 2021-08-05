@@ -17,7 +17,7 @@ import utils.samplers as samplers
 from torch.utils.data import DataLoader
 from train.train_one_epoch import train_one_epoch, evaluate
 from pathlib import Path
-from train.criterion import MeshLoss2, JointEvaluator
+from train.criterion import MeshLoss2, JointEvaluator, MeshLoss3
 from models.TMR import build_model
 from datasets.datasets import create_dataset, create_val_dataset
 from utils.train_options import DDPTrainOptions
@@ -94,7 +94,6 @@ def main(options):
     # model, criterion, postprocessors = build_model(options)
     model = build_model(options)
     model.to(device)
-    criterion = MeshLoss2(options, device)
     evaluator = JointEvaluator(options, device)
 
     model_without_ddp = model
@@ -105,6 +104,11 @@ def main(options):
     dataset_train = create_dataset(options.dataset, options)
     dataset_val = create_val_dataset(options.val_dataset, options)
     print('finish build dataset')
+
+    if options.run_simplify:
+        criterion = MeshLoss3(options, device, dataset_train.dataset_infos)
+    else:
+        criterion = MeshLoss2(options, device)
 
     if options.distributed:
         sampler_train = samplers.DistributedSampler(dataset_train)
@@ -201,6 +205,8 @@ def main(options):
                 'options': options,
                 'iter_num': summary_writer.iter_num,
             }, checkpoint_latest, _use_new_zipfile_serialization=False)
+            if options.run_simplify:
+                criterion.fits_dict.save()
 
             if (epoch + 1) % options.save_freq == 0:
                 if not os.path.exists(options.log_dir):

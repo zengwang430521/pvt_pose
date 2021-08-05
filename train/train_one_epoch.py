@@ -57,6 +57,55 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 
+def train_one_epoch_spin(model: torch.nn.Module, criterion: torch.nn.Module,
+                    dataloader: Iterable,
+                    optimizer: torch.optim.Optimizer,
+                    device: torch.device, epoch: int,
+                    options, summary_writer=None):
+    model.train()
+
+    metric_logger = utils.MetricLogger(delimiter="  ")
+    metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
+    header = 'Epoch: [{}]'.format(epoch)
+    print_freq = options.summary_steps
+
+    data_iter = iter(dataloader)
+
+    for _ in metric_logger.log_every(range(len(dataloader)), print_freq, header):
+        return_vis = False
+        if summary_writer is not None:
+            summary_writer.iter_num += 1
+            if summary_writer.iter_num % options.summary_steps == 0:
+                return_vis = True
+
+        input_batch = data_iter.next()
+        images = input_batch['img'].to(device)
+        pred_para = model(images)
+        loss_dict, vis_data = criterion(pred_para, input_batch, return_vis)
+
+        losses = sum(loss_dict[k] for k in loss_dict)
+        optimizer.zero_grad()
+        losses.backward()
+        optimizer.step()
+
+        # reduce losses over all GPUs for logging purposes
+        loss_dict_reduced = utils.reduce_dict(loss_dict)
+        loss_dict_reduced = {f'{k}': v for k, v in loss_dict_reduced.items()}
+        losses_reduced = sum(loss_dict_reduced.values())
+        loss_value = losses_reduced.item()
+
+        metric_logger.update(loss=loss_value, **loss_dict_reduced)
+        metric_logger.update(lr=optimizer.param_groups[0]["lr"])
+
+        if return_vis:
+            write_summary(summary_writer, loss_dict, vis_data)
+
+    # gather the stats from all processes
+    metric_logger.synchronize_between_processes()
+    print("Averaged stats:", metric_logger)
+    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
+
+
 def write_summary(summary_writer, loss_dict, vis_data):
     step_count = summary_writer.iter_num
     loss_item = {key: loss_dict[key].detach().item() for key in loss_dict.keys()}

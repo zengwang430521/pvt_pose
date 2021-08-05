@@ -81,6 +81,12 @@ class BaseDataset(Dataset):
         except KeyError:
             self.keypoints = np.zeros((len(self.imgname), 24, 3))
 
+        # get oppenpose 25 keypoints
+        try:
+            self.keypoints_openpose = self.data['openpose']
+        except KeyError:
+            self.keypoints_openpose = np.zeros((len(self.imgname), 25, 3))
+
         self.length = self.scale.shape[0]
         self.use_IUV = use_IUV
         self.has_dp = np.zeros(len(self.imgname))
@@ -295,7 +301,7 @@ class BaseDataset(Dataset):
 
         # Get SMPL parameters, if available
         has_smpl = self.has_smpl[index]
-        item['has_smpl'] = has_smpl
+        item['has_smpl'] = float(has_smpl)
         if has_smpl:
             pose = self.pose[index].copy()
             betas = self.betas[index].copy()
@@ -317,12 +323,19 @@ class BaseDataset(Dataset):
 
         # Get 2D keypoints and apply augmentation transforms
         keypoints = self.keypoints[index].copy()
-        item['keypoints'] = torch.from_numpy(self.j2d_processing(keypoints, center, sc*scale, rot, flip)).float()
+        keypoints_op = self.keypoints_openpose[index].copy()
+        keypoints = np.concatenate([keypoints_op, keypoints], axis=0)
+        keypoints = torch.from_numpy(self.j2d_processing(keypoints, center, sc*scale, rot, flip)).float()
+
+        item['keypoints_op'] = keypoints[:25]
+        item['keypoints'] = keypoints[25:]
 
         # Get GT SMPL joints (For the compatibility with SURREAL dataset)
         item['keypoints_smpl'] = torch.zeros(24, 3, dtype=torch.float32)
         item['pose_3d_smpl'] = torch.zeros(24, 4, dtype=torch.float32)
         item['has_pose_3d_smpl'] = 0
+        item['rot'] = rot
+        item['flip'] = flip
 
         # Pass path to segmentation mask, if available
         # Cannot load the mask because each mask has different size, so they cannot be stacked in one tensor

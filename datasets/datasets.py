@@ -9,6 +9,7 @@ from .base_dataset import BaseDataset
 from .surreal_dataset import SurrealDataset
 import math
 
+
 def create_dataset(dataset, options, **kwargs):
     dataset_setting = {
         'all': (['h36m-train', 'lsp-orig', 'coco', 'mpii', 'up-3d'],
@@ -37,6 +38,7 @@ def create_val_dataset(dataset, options):
     return dataset
 
 
+import os
 class MeshMixDataset(torch.utils.data.Dataset):
 
     def __init__(self, datasets, partition, options, **kwargs):
@@ -47,6 +49,16 @@ class MeshMixDataset(torch.utils.data.Dataset):
         self.partition = np.array(partition).cumsum()
         self.datasets = [BaseDataset(options, ds, **kwargs) for ds in datasets]
         self.length = max(len(ds) for ds in self.datasets)
+        self.dataset_infos = []
+        begin_dix = 0
+        for (ds_name, ds) in zip(datasets, self.datasets):
+            self.dataset_infos.append({
+                'ds_name': ds_name,
+                'begin_idx': begin_dix,
+                'len': len(ds),
+            })
+            ds.begin_idx = begin_dix
+            begin_dix += len(ds)
 
     def __len__(self):
         """Get the size of the dataset."""
@@ -60,5 +72,8 @@ class MeshMixDataset(torch.utils.data.Dataset):
             if p <= self.partition[i]:
                 index_new = (idx + np.random.rand()) * len(self.datasets[i]) / self.length
                 index_new = int(np.round(index_new)) % (len(self.datasets[i]))
-                return self.datasets[i][index_new]
+                item = self.datasets[i][index_new]
+                opt_idx = self.datasets[i].begin_idx + index_new
+                item['opt_idx'] = opt_idx
+                return item
         return None

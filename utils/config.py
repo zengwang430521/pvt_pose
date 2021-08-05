@@ -52,6 +52,16 @@ DATASET_FILES = [ {'h36m-p1': join(DATASET_NPZ_PATH, 'h36m_valid_protocol1.npz')
                 ]
 
 
+# Path to test/train npz files, GET FROM SPIN
+DATASET_NPZ_PATH = 'data/datasets/npz/dataset_extras'
+# Path to test/train npz files
+DATASET_FILES[1]['lsp-orig'] = join(DATASET_NPZ_PATH, 'lsp_dataset_original_train.npz')
+DATASET_FILES[1]['mpii'] = join(DATASET_NPZ_PATH, 'mpii_train.npz')
+DATASET_FILES[1]['coco'] = join(DATASET_NPZ_PATH, 'coco_2014_train.npz')
+DATASET_FILES[1]['lspet'] = join(DATASET_NPZ_PATH, 'hr-lspet_train.npz')
+DATASET_FILES[1]['mpi-inf-3dhp'] = join(DATASET_NPZ_PATH, 'mpi_inf_3dhp_train.npz')
+
+
 # Path to SPIN fitting result
 FIT_FILES = [ {},
               {
@@ -146,3 +156,5 @@ IMG_NORM_MEAN = [0.485, 0.456, 0.406]
 IMG_NORM_STD = [0.229, 0.224, 0.225]
 
 SMPL_MEAN_PARAMS = 'data/smpl_mean_params.npz'
+SMPL_MODEL_DIR = 'data/smpl'
+STATIC_FITS_DIR = 'data/static_fits'
