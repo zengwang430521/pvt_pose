@@ -1182,7 +1182,7 @@ class MeshLoss3(MeshLoss2):
         # opt_valid = has_smpl < 1
         opt_valid = has_smpl < 1
         # opt_valid = has_smpl < 2; print('debug')
-        opt_valid[0] = True; print('debug')
+        # opt_valid[0] = True; print('debug')
         update_mask = torch.zeros(batch_size, dtype=torch.bool, device=self.device)
         if opt_valid.sum() > 0:
             keypoints2d = torch.cat([gt_keypoints_op_2d, gt_keypoints_2d], dim=1)
