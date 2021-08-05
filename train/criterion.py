@@ -1223,10 +1223,10 @@ class MeshLoss3(MeshLoss2):
         all_idx = input_batch['opt_idx'].to(self.device)
         up_paras = [all_idx, gt_pose, gt_betas, update_mask]
         up_paras = utils.all_gather(up_paras)
-        up_idx = torch.cat([t[0] for t in up_paras], dim=0)
-        up_pose = torch.cat([t[1] for t in up_paras], dim=0)
-        up_betas = torch.cat([t[2] for t in up_paras], dim=0)
-        up_mask = torch.cat([t[3] for t in up_paras], dim=0)
+        up_idx = torch.cat([t[0].cpu() for t in up_paras], dim=0)
+        up_pose = torch.cat([t[1].cpu() for t in up_paras], dim=0)
+        up_betas = torch.cat([t[2].cpu() for t in up_paras], dim=0)
+        up_mask = torch.cat([t[3].cpu() for t in up_paras], dim=0)
         self.fits_dict.update(up_idx, up_pose, up_betas, up_mask)
 
         # loss
