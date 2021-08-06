@@ -201,21 +201,23 @@ srun -p 3dv-share -w SH-IDC1-10-198-6-132 \
 srun -p pat_earth \
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
 srun -p 3dv-share -x SH-IDC1-10-198-6-[132-135] \
-srun -p 3dv-share -w SH-IDC1-10-198-6-130\
-    --ntasks 4 --job-name=mesh \
-    --gres=gpu:4 --ntasks-per-node=4 --cpus-per-task=4 --kill-on-bad-exit=1 \
-    python -u main.py --dataset=spin \
-    --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=10 \
-    --name=debug --run_simplify --iter_simplify=1 \
-    --model=mypvt20_2_small --opt=adamw --lr=2.5e-4 --wd=1e-4 --lr_drop=90 \
-    --img_res=224 --use_mc\
-
+srun -p 3dv-share -w SH-IDC1-10-198-6-131\
+    --ntasks 8 --job-name=mesh \
+    --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=4 --kill-on-bad-exit=1 \
     python -u main.py --dataset=spin \
     --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=100 \
     --name=my20_2f_opt --run_simplify --iter_simplify=50 \
     --model=mypvt20_2_small --opt=adamw --lr=2.5e-4 --wd=1e-4 --lr_drop=90 \
     --resume_from=logs/my20_2f_opt/checkpoints/checkpoint_latest.pth     --img_res=224 \
     --pretrain_from=data/pretrained/my20_2_330.pth --use_mc
+
+    python -u main.py --dataset=spin \
+    --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=10 \
+    --name=debug --run_simplify --iter_simplify=1 \
+    --model=mypvt20_2_small --opt=adamw --lr=2.5e-4 --wd=1e-4 --lr_drop=90 \
+    --img_res=224 --use_mc\
+
+
 
 
     python -u main.py --dataset=all \
