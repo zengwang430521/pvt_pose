@@ -1309,7 +1309,8 @@ class MeshLoss3(MeshLoss2):
         all_idx = input_batch['opt_idx'].to(self.device)
 
         # self.fits_dict.update(all_idx, gt_pose, gt_betas, update_mask)
-        up_paras = [all_idx.detach(), gt_pose.detach(), gt_betas.detach(), update_mask.detach()]
+        # up_paras = [all_idx.detach(), gt_pose.detach(), gt_betas.detach(), update_mask.detach()]
+        up_paras = [all_idx.detach().cpu(), gt_pose.detach().cpu(), gt_betas.detach().cpu(), update_mask.detach().cpu()]
         up_paras = utils.all_gather(up_paras)
         up_idx = torch.cat([t[0].to(self.fits_dict.fit_device) for t in up_paras], dim=0)
         up_pose = torch.cat([t[1].to(self.fits_dict.fit_device) for t in up_paras], dim=0)
