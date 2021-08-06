@@ -313,13 +313,11 @@ class DDPTrainOptions(object):
 
         train = self.parser.add_argument_group('Training Options')
         train.add_argument('--dataset', default='up-3d',
-                           choices=['itw', 'all', 'h36m', 'up-3d', 'mesh', 'spin', 'surreal'],
                            help='Choose training dataset')
         train.add_argument('--run_simplify', dest='run_simplify', default=False, action='store_true', help='use opt or not')
         train.add_argument('--iter_simplify', type=int, default=50)
         train.add_argument('--step_simplify', type=float, default=0.01)
         train.add_argument('--thre_simplify', type=float, default=100.0)
-
 
         train.add_argument('--num_epochs', type=int, default=30, help='Total number of training epochs')
         train.add_argument('--batch_size', type=int, default=2, help='Batch size')

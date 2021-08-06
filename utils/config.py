@@ -157,4 +157,4 @@ IMG_NORM_STD = [0.229, 0.224, 0.225]
 
 SMPL_MEAN_PARAMS = 'data/smpl_mean_params.npz'
 SMPL_MODEL_DIR = 'data/smpl'
-STATIC_FITS_DIR = 'data/static_fits'
+STATIC_FITS_DIR = 'data/datasets/npz/static_fits'

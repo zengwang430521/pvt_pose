@@ -988,14 +988,15 @@ class FitsDict():
             ds_len = ds_info['len']
             try:
                 dict_file = os.path.join(options.checkpoint_dir, ds_name + '_fits.npy')
-                fits = torch.from_numpy(np.load(dict_file))
+                fits = torch.from_numpy(np.load(dict_file)).float()
             except IOError:
                 try:
                     # Dictionary does not exist, so populate with static fits
                     dict_file = os.path.join(config.STATIC_FITS_DIR, ds_name + '_fits.npy')
-                    fits = torch.from_numpy(np.load(dict_file))
+                    fits = torch.from_numpy(np.load(dict_file)).float()
                 except IOError:
                     fits = torch.zeros(ds_len, 82)
+                    print('No such file:' + config.STATIC_FITS_DIR, ds_name + '_fits.npy' )
             all_fits = torch.cat([all_fits, fits], dim=0)
         self.all_fits = all_fits.to(self.fit_device)
 
@@ -1041,7 +1042,7 @@ class FitsDict():
                        torch.stack([sin, cos, zeros], dim=-1).unsqueeze(1),
                        r3], dim=1).float()
         global_pose = pose[:, :3]
-        global_pose_rotmat = angle_axis_to_rotation_matrix(global_pose)
+        global_pose_rotmat = angle_axis_to_rotation_matrix(global_pose).float()
         global_pose_rotmat_3b3 = global_pose_rotmat[:, :3, :3]
         global_pose_rotmat_3b3 = torch.matmul(R, global_pose_rotmat_3b3)
         global_pose_rotmat[:, :3, :3] = global_pose_rotmat_3b3
@@ -1276,14 +1277,17 @@ class MeshLoss3(MeshLoss2):
             old_pose, old_shape = self.fits_dict.get_para(opt_idx, rot, flip)
             old_loss = self.get_old_opt_loss(old_pose, old_shape, keypoints2d)
             joints_conf = keypoints2d[:, :, -1]
-            old_loss = old_loss.sum(dim=-1) / (joints_conf ** 2).sum(dim=-1)
+            # TODO: SPIN use mean without conf, it's so strange.
+            old_loss = old_loss.mean(dim=-1)
+            # old_loss = old_loss.sum(dim=-1) / (joints_conf ** 2).sum(dim=-1)
 
             init_pose = pred_pose[opt_valid, -1].detach()
             init_shape = pred_shape[opt_valid, -1].detach()
             init_camera = pred_camera[opt_valid, -1].detach()
             opt_res = self.optimize((init_pose, init_shape, init_camera), keypoints2d)
             new_loss = opt_res['reprojection_loss']
-            new_loss = new_loss.sum(dim=-1) / (joints_conf ** 2).sum(dim=-1)
+            new_loss = new_loss.mean(dim=-1)
+            # new_loss = new_loss.sum(dim=-1) / (joints_conf ** 2).sum(dim=-1)
 
             opt_update = new_loss < old_loss
             # opt_update[:] = True; print('debug')
@@ -1408,6 +1412,7 @@ class MeshLoss3(MeshLoss2):
             data['pred_vert'] = sampled_vertices[0:vis_num, -1].detach()
             data['pred_cam'] = pred_camera[0:vis_num, -1].detach()
             data['pred_joint'] = sampled_joints_2d[0:vis_num, -1].detach()
+            data['has_smpl'] = has_smpl[0:vis_num].detach()
             vis_data = data
 
         return losses, vis_data

@@ -18,6 +18,7 @@ def create_dataset(dataset, options, **kwargs):
                 [.1, .3, .3, .3]),
         'h36m': (['h36m-train'], [1.0]),
         'up-3d': (['up-3d'], [1.0]),
+        'mpii': (['mpii'], [1.0]),
         'mesh': (['h36m-train', 'up-3d'],
                  [.7, .3]),
         'spin': (['h36m-train', 'lsp-orig', 'mpii', 'lspet', 'coco', 'mpi-inf-3dhp'],
