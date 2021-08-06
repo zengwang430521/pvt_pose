@@ -865,7 +865,7 @@ def estimate_translation_np(S, joints_2d, joints_conf, focal_length=5000, img_si
     return trans
 
 
-def estimate_translation(S, joints_2d, focal_length=5000., img_size=224.):
+def estimate_translation0(S, joints_2d, focal_length=5000., img_size=224.):
     """Find camera translation that brings 3D joints S closest to 2D the corresponding joints_2d.
     Input:
         S: (B, 49, 3) 3D joint locations
@@ -887,13 +887,95 @@ def estimate_translation(S, joints_2d, focal_length=5000., img_size=224.):
         joints_i = joints_2d[i]
         conf_i = joints_conf[i]
         trans[i] = estimate_translation_np(S_i, joints_i, conf_i, focal_length=focal_length, img_size=img_size)
+        t1 = estimate_translation_np(S_i, joints_i, conf_i, focal_length=focal_length, img_size=img_size)
+        t2 = estimate_translation_tensor(S_i, joints_i, conf_i, focal_length=focal_length, img_size=img_size)
+        err = t1 - t2.cpu().numpy()
+
     return torch.from_numpy(trans).to(device)
+
+
+def estimate_translation_tensor(S, joints_2d, joints_conf, focal_length=5000, img_size=224):
+    """Find camera translation that brings 3D joints S closest to 2D the corresponding joints_2d.
+    Input:
+        S: (25, 3) 3D joint locations
+        joints: (25, 3) 2D joint locations and confidence
+    Returns:
+        (3,) camera translation vector
+    """
+    S = torch.tensor(S).cuda()
+    joints_2d = torch.tensor(joints_2d).cuda()
+    joints_conf = torch.tensor(joints_conf).cuda()
+
+    device = S.device
+    num_joints = S.shape[0]
+    # focal length
+    f = torch.FloatTensor([focal_length, focal_length]).to(device)
+    # optical center
+    center = torch.FloatTensor([img_size / 2., img_size / 2.]).to(device)
+
+    # transformations
+    Z = S[:, 2].repeat_interleave(2, dim=-1)
+    XY = S[:, 0:2].reshape(-1)
+    O = center.repeat(num_joints)
+
+    F = f.repeat(num_joints)
+
+    weight2 = joints_conf.sqrt().repeat_interleave(2, dim=-1)
+
+    # least squares
+    Q = torch.stack([F * torch.tensor([1, 0]).repeat(num_joints).to(device),
+                    F * torch.tensor([0, 1]).repeat(num_joints).to(device),
+                    O - joints_2d.reshape(-1)], dim=1)
+
+    c = (joints_2d.reshape(-1) - O) * Z - F * XY
+
+
+    # weighted least squares
+    W = torch.diagflat(weight2)
+    Q = torch.mm(W, Q)
+    c = torch.mm(W, c[:, None])
+
+    # square matrix
+    A = torch.mm(Q.T, Q)
+    b = torch.mm(Q.T, c)
+
+    # solution
+    trans = torch.lstsq(b, A).solution
+    return trans[:, 0]
+
+
+def estimate_translation(S, joints_2d, focal_length=5000., img_size=224.):
+    """Find camera translation that brings 3D joints S closest to 2D the corresponding joints_2d.
+    Input:
+        S: (B, 49, 3) 3D joint locations
+        joints: (B, 49, 3) 2D joint locations and confidence
+    Returns:
+        (B, 3) camera translation vectors
+    """
+
+    device = S.device
+    # Use only joints 25:49 (GT joints)
+    S = S[:, 25:, :]
+    joints_2d = joints_2d[:, 25:, :]
+    joints_conf = joints_2d[:, :, -1]
+    joints_2d = joints_2d[:, :, :-1]
+    trans = S.new_zeros((S.shape[0], 3))
+    # Find the translation for each example in the batch
+    for i in range(S.shape[0]):
+        S_i = S[i]
+        joints_i = joints_2d[i]
+        conf_i = joints_conf[i]
+        trans[i] = estimate_translation_tensor(S_i, joints_i, conf_i, focal_length=focal_length, img_size=img_size)
+
+    return trans
 
 
 class FitsDict():
     """ Dictionary keeping track of the best fit per image in the training set """
     def __init__(self, options, device, dataset_infos):
         self.device = device
+        # self.fit_device = torch.device('cpu')
+        self.fit_device = device
         self.options = options
         self.dataset_infos = dataset_infos
         # array used to flip SMPL pose parameters
@@ -915,7 +997,7 @@ class FitsDict():
                 except IOError:
                     fits = torch.zeros(ds_len, 82)
             all_fits = torch.cat([all_fits, fits], dim=0)
-        self.all_fits = all_fits
+        self.all_fits = all_fits.to(self.fit_device)
 
     def save(self):
         """ Save dictionary state to disk """
@@ -924,7 +1006,7 @@ class FitsDict():
             begin_idx = ds_info['begin_idx']
             ds_len = ds_info['len']
             dict_file = os.path.join(self.options.checkpoint_dir, ds_name + '_fits.npy')
-            np.save(dict_file, self.fits_dict[begin_idx:begin_idx+ds_len].cpu().numpy())
+            np.save(dict_file, self.all_fits[begin_idx:begin_idx+ds_len].cpu().numpy())
 
     def get_para(self, opt_ind, rot, is_flipped):
         """ Retrieve dictionary entries """
@@ -979,10 +1061,10 @@ class FitsDict():
     def update(self, opt_idx, pose, betas, mask):
         if mask.max() == 0:
             return
-        mask = mask.cpu()
+        mask = mask.to(self.fit_device)
         opt_idx = opt_idx[mask]
-        params = torch.cat([pose, betas], dim=-1).cpu()
-        opt_idx = opt_idx.cpu()
+        params = torch.cat([pose, betas], dim=-1).to(self.fit_device)
+        opt_idx = opt_idx.to(self.fit_device)
         params = params[mask]
         self.all_fits[opt_idx, :] = params
         return

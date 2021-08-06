@@ -186,6 +186,8 @@ def main(options):
         print(test_info)
         return
 
+    # criterion.fits_dict.save(); print('debug')
+
     print("Start training")
     log_dir = Path(options.log_dir)
     start_time = time.time()
