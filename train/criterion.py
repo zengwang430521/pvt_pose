@@ -974,8 +974,8 @@ class FitsDict():
     """ Dictionary keeping track of the best fit per image in the training set """
     def __init__(self, options, device, dataset_infos):
         self.device = device
-        # self.fit_device = torch.device('cpu')
-        self.fit_device = device
+        self.fit_device = torch.device('cpu')
+        # self.fit_device = device
         self.options = options
         self.dataset_infos = dataset_infos
         # array used to flip SMPL pose parameters
