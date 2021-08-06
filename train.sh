@@ -206,7 +206,7 @@ srun -p 3dv-share -w SH-IDC1-10-198-6-130\
     --gres=gpu:4 --ntasks-per-node=4 --cpus-per-task=4 --kill-on-bad-exit=1 \
     python -u main.py --dataset=spin \
     --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=10 \
-    --name=debug --run_simplify --iter_simplify=50 \
+    --name=debug --run_simplify --iter_simplify=1 \
     --model=mypvt20_2_small --opt=adamw --lr=2.5e-4 --wd=1e-4 --lr_drop=90 \
     --img_res=224 --use_mc\
 
