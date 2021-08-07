@@ -1227,6 +1227,7 @@ class MeshLoss3(MeshLoss2):
 
         joints = [constants.JOINT_MAP[i] for i in constants.JOINT_NAMES]
         self.joint_map = torch.tensor(joints, dtype=torch.long)
+
         # Ignore the the following joints for the fitting process
         ign_joints = ['OP Neck', 'OP RHip', 'OP LHip', 'Right Hip', 'Left Hip']
         self.ign_joints = [constants.JOINT_IDS[i] for i in ign_joints]
