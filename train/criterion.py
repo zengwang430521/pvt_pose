@@ -18,7 +18,7 @@ from utils import constants
 import numpy as np
 from utils import config
 from smplx import SMPL as _SMPL
-from smplx.lbs import vertices2joints
+from smplx.lbs import vertices2joints, lbs
 import cv2
 import math
 import utils.misc as utils
@@ -1071,6 +1071,141 @@ class FitsDict():
         return
 
 
+class SMPL_JOINT(_SMPL):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        assert self.joint_mapper is None
+
+        J_regressor = self.J_regressor
+        J_idx_select = self.vertex_joint_selector.extra_joints_idxs
+
+        n_select = J_idx_select.shape[0]
+        J_regressor_select = torch.zeros([n_select, 6890])
+        for i in range(n_select):
+            idx = J_idx_select[i]
+            J_regressor_select[i, idx] = 1
+        J_regressor_extra = np.load(config.JOINT_REGRESSOR_TRAIN_EXTRA)
+        J_regressor_extra = torch.tensor(J_regressor_extra).float()
+        J_regressor_extra_all = torch.cat([J_regressor_select, J_regressor_extra], dim=0)
+        valid_vidx = J_regressor_extra_all.sum(dim=0).nonzero()
+        valid_vidx = valid_vidx.squeeze()
+        J_regressor_extra_all = J_regressor_extra_all[:, valid_vidx]
+
+        lbs_weights = self.lbs_weights[valid_vidx, :]
+        joint_lbs_weights = torch.zeros(J_regressor.shape[0], lbs_weights.shape[1])
+        lbs_weights = torch.cat([joint_lbs_weights, lbs_weights])
+
+        joint_template = torch.mm(J_regressor, self.v_template)
+        v_template = self.v_template[valid_vidx, :]
+        v_template = torch.cat([joint_template, v_template], dim=0)
+
+        V, C, D = self.shapedirs.shape
+        joint_shapedirs = torch.mm(J_regressor, self.shapedirs.reshape(V, -1)).reshape(-1, C, D)
+        shapedirs = self.shapedirs[valid_vidx, :, :]
+        shapedirs = torch.cat([joint_shapedirs, shapedirs], dim=0)
+
+        posedirs = self.posedirs                                    # [207, 6890 * 3]
+        posedirs = posedirs.reshape([posedirs.shape[0], -1, 3])     # [207, 6890, 3]
+        D, V, C = posedirs.shape
+        posedirs = posedirs.permute(1, 0, 2)        # [6890, 207, 3]
+
+        joint_posedirs = torch.mm(J_regressor, posedirs.reshape(V, D * C))    # [24, 207*3]
+        joint_posedirs = joint_posedirs.reshape(-1, D, C)   # [24, 207, 3]
+        joint_posedirs = joint_posedirs.permute(1, 0, 2)    # [207, 24, 3]
+        posedirs = posedirs[valid_vidx, :, :]               # [83, 207, 3]
+        posedirs = posedirs.permute(1, 0, 2)                # [207, 83, 3]
+        posedirs = torch.cat([joint_posedirs, posedirs], dim=1)     # [207, 107, 3]
+        posedirs = posedirs.reshape(D, -1)                          # [207, 107*3]
+
+        J_regressor_new = torch.zeros([J_regressor.shape[0], v_template.shape[0]])
+        for i in range(J_regressor.shape[0]):
+            J_regressor_new[i, i] = 1
+
+        self.register_buffer('lbs_weights', lbs_weights)
+        self.register_buffer('v_template', v_template)
+        self.register_buffer('shapedirs', shapedirs)
+        self.register_buffer('posedirs', posedirs)
+        self.register_buffer('J_regressor', J_regressor_new)
+        self.register_buffer('J_regressor_extra_all', J_regressor_extra_all)
+
+    def forward(
+        self,
+        betas=None,
+        body_pose=None,
+        global_orient=None,
+        transl=None,
+        return_verts=True,
+        return_full_pose=False,
+        pose2rot=True,
+        **kwargs
+    ):
+        ''' Forward pass for the SMPL model
+
+            Parameters
+            ----------
+            global_orient: torch.tensor, optional, shape Bx3
+                If given, ignore the member variable and use it as the global
+                rotation of the body. Useful if someone wishes to predicts this
+                with an external model. (default=None)
+            betas: torch.tensor, optional, shape BxN_b
+                If given, ignore the member variable `betas` and use it
+                instead. For example, it can used if shape parameters
+                `betas` are predicted from some external model.
+                (default=None)
+            body_pose: torch.tensor, optional, shape Bx(J*3)
+                If given, ignore the member variable `body_pose` and use it
+                instead. For example, it can used if someone predicts the
+                pose of the body joints are predicted from some external model.
+                It should be a tensor that contains joint rotations in
+                axis-angle format. (default=None)
+            transl: torch.tensor, optional, shape Bx3
+                If given, ignore the member variable `transl` and use it
+                instead. For example, it can used if the translation
+                `transl` is predicted from some external model.
+                (default=None)
+            return_verts: bool, optional
+                Return the vertices. (default=True)
+            return_full_pose: bool, optional
+                Returns the full axis-angle pose vector (default=False)
+
+            Returns
+            -------
+        '''
+        # If no shape and pose parameters are passed along, then use the
+        # ones from the module
+        global_orient = (global_orient if global_orient is not None else
+                         self.global_orient)
+        body_pose = body_pose if body_pose is not None else self.body_pose
+        betas = betas if betas is not None else self.betas
+
+        apply_trans = transl is not None or hasattr(self, 'transl')
+        if transl is None and hasattr(self, 'transl'):
+            transl = self.transl
+
+        full_pose = torch.cat([global_orient, body_pose], dim=1)
+
+        batch_size = max(betas.shape[0], global_orient.shape[0],
+                         body_pose.shape[0])
+
+        if betas.shape[0] != batch_size:
+            num_repeats = int(batch_size / betas.shape[0])
+            betas = betas.expand(num_repeats, -1)
+
+        vertices, joints = lbs(betas, full_pose, self.v_template,
+                               self.shapedirs, self.posedirs,
+                               self.J_regressor, self.parents,
+                               self.lbs_weights, pose2rot=pose2rot)
+        vertices = vertices[:, self.J_regressor.shape[0]:, :]
+        joints_extra_all = vertices2joints(self.J_regressor_extra_all, vertices)
+        joints = torch.cat([joints, joints_extra_all], dim=1)
+
+        if apply_trans:
+            joints += transl.unsqueeze(dim=1)
+            vertices += transl.unsqueeze(dim=1)
+
+        return joints
+
+
 # With SPIN fitting
 class MeshLoss3(MeshLoss2):
     def __init__(self, options, device, dataset_infos):
@@ -1083,13 +1218,14 @@ class MeshLoss3(MeshLoss2):
         self.focal_length = 5000.0
         self.loss_threhold = options.thre_simplify * (self.options.img_res / 224.0) ** 2
 
-        self.smplx = _SMPL(config.SMPL_MODEL_DIR,
-                         create_transl=False).to(self.device)
+        # self.smplx = _SMPL(config.SMPL_MODEL_DIR,
+        #                  create_transl=False).to(self.device)
+        # J_regressor_extra = np.load(config.JOINT_REGRESSOR_TRAIN_EXTRA)
+        # self.register_buffer('J_regressor_extra', torch.tensor(J_regressor_extra, dtype=torch.float32, device=device))
 
-        # tmp = self.smplx()
+        self.smpl_j = SMPL_JOINT(model_path=config.SMPL_MODEL_DIR, create_transl=False).to(self.device)
+
         joints = [constants.JOINT_MAP[i] for i in constants.JOINT_NAMES]
-        J_regressor_extra = np.load(config.JOINT_REGRESSOR_TRAIN_EXTRA)
-        self.register_buffer('J_regressor_extra', torch.tensor(J_regressor_extra, dtype=torch.float32, device=device))
         self.joint_map = torch.tensor(joints, dtype=torch.long)
         # Ignore the the following joints for the fitting process
         ign_joints = ['OP Neck', 'OP RHip', 'OP LHip', 'Right Hip', 'Left Hip']
@@ -1145,10 +1281,22 @@ class MeshLoss3(MeshLoss2):
         camera_optimizer = torch.optim.Adam(camera_opt_params, lr=self.step_size, betas=(0.9, 0.999))
 
         for i in range(self.num_iters):
-            smpl_output = self.smplx(global_orient=global_orient,
+            # smpl_output = self.smplx(global_orient=global_orient,
+            #                         body_pose=body_pose,
+            #                         betas=betas, return_full_pose=True)
+            # model_joints = self.get_opt_joints(smpl_output)
+            #
+            # model_joints2 = self.smpl_j(global_orient=global_orient,
+            #                         body_pose=body_pose,
+            #                         betas=betas, return_full_pose=True)
+            # model_joints2 = model_joints2[:, self.joint_map, :]
+            # err = model_joints - model_joints2
+            # t = err.abs().max()
+
+            model_joints = self.smpl_j(global_orient=global_orient,
                                     body_pose=body_pose,
                                     betas=betas, return_full_pose=True)
-            model_joints = self.get_opt_joints(smpl_output)
+            model_joints = model_joints[:, self.joint_map, :]
 
             loss = camera_fitting_loss(model_joints, camera_translation,
                                        init_cam_t, camera_center,
@@ -1173,10 +1321,15 @@ class MeshLoss3(MeshLoss2):
 
         body_optimizer = torch.optim.Adam(body_opt_params, lr=self.step_size, betas=(0.9, 0.999))
         for i in range(self.num_iters):
-            smpl_output = self.smplx(global_orient=global_orient,
+            # smpl_output = self.smplx(global_orient=global_orient,
+            #                         body_pose=body_pose,
+            #                         betas=betas, return_full_pose=True)
+            # model_joints = self.get_opt_joints(smpl_output)
+
+            model_joints = self.smpl_j(global_orient=global_orient,
                                     body_pose=body_pose,
                                     betas=betas, return_full_pose=True)
-            model_joints = self.get_opt_joints(smpl_output)
+            model_joints = model_joints[:, self.joint_map, :]
 
             loss = body_fitting_loss(body_pose, betas, model_joints, camera_translation, camera_center,
                                      joints_2d, joints_conf, self.pose_prior,
@@ -1187,24 +1340,29 @@ class MeshLoss3(MeshLoss2):
 
         # Get final loss value
         with torch.no_grad():
-            smpl_output = self.smplx(global_orient=global_orient,
+            # smpl_output = self.smplx(global_orient=global_orient,
+            #                         body_pose=body_pose,
+            #                         betas=betas, return_full_pose=True)
+            # vertices = smpl_output.vertices
+            # model_joints = self.get_opt_joints(smpl_output)
+
+            model_joints = self.smpl_j(global_orient=global_orient,
                                     body_pose=body_pose,
                                     betas=betas, return_full_pose=True)
-            vertices = smpl_output.vertices
-            model_joints = self.get_opt_joints(smpl_output)
+            model_joints = model_joints[:, self.joint_map, :]
 
             reprojection_loss = body_fitting_loss(body_pose, betas, model_joints, camera_translation, camera_center,
                                                   joints_2d, joints_conf, self.pose_prior,
                                                   focal_length=self.focal_length,
                                                   output='reprojection')
 
-        vertices = vertices.detach()
+        # vertices = vertices.detach()
         joints = model_joints.detach()
         pose = torch.cat([global_orient, body_pose], dim=-1).detach()
         betas = betas.detach()
 
         out = {
-            'vertices': vertices,
+            # 'vertices': vertices,
             'joints': joints,
             'pose': pose,
             'betas': betas,
@@ -1217,8 +1375,12 @@ class MeshLoss3(MeshLoss2):
         batch_size = opt_pose.shape[0]
         opt_pose = opt_pose.to(self.device)
         opt_betas = opt_betas.to(self.device)
-        opt_output = self.smplx(betas=opt_betas, body_pose=opt_pose[:,3:], global_orient=opt_pose[:,:3])
-        opt_joints = self.get_opt_joints(opt_output)
+
+        # opt_output = self.smplx(betas=opt_betas, body_pose=opt_pose[:,3:], global_orient=opt_pose[:,:3])
+        # opt_joints = self.get_opt_joints(opt_output)
+
+        opt_joints = self.smpl_j(betas=opt_betas, body_pose=opt_pose[:,3:], global_orient=opt_pose[:,:3])
+        opt_joints = opt_joints[:, self.joint_map, :]
 
         # Get joint confidence
         keypoints_2d[..., :-1] = (keypoints_2d[..., :-1] + 1) * 0.5 * self.options.img_res
