@@ -1473,8 +1473,8 @@ class MeshLoss3(MeshLoss2):
 
         # update fits dict
         up_paras = [opt_idx[opt_update].detach().cpu(),
-                    gt_pose[opt_update].detach().cpu(),
-                    gt_betas[opt_update].detach().cpu(),
+                    opt_pose[opt_update].detach().cpu(),
+                    opt_betas[opt_update].detach().cpu(),
                     opt_update[opt_update].detach().cpu()]
         up_paras = utils.all_gather(up_paras)
         up_idx = torch.cat([t[0].to(self.fits_dict.fit_device) for t in up_paras], dim=0)
