@@ -146,6 +146,8 @@ class ResNet(nn.Module):
         x = self.layer4(x)
 
         x = self.avgpool(x)
+        if x.shape[-1] > 1:
+            x = x.mean(dim=-1).mean(dim=-1)
         x = x.view(x.size(0), -1)
         # remove final fully connected layer
         # x = self.fc(x)
