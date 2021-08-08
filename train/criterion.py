@@ -1060,6 +1060,9 @@ class FitsDict():
         return pose
 
     def update(self, opt_idx, pose, betas, mask):
+        if mask.shape[0] == 0:
+            return
+
         if mask.max() == 0:
             return
         mask = mask.to(self.fit_device)
@@ -1429,7 +1432,7 @@ class MeshLoss3(MeshLoss2):
         opt_valid = has_smpl < 1
         # opt_valid = has_smpl < 2; print('debug')
         # opt_valid[0] = True; print('debug')
-        update_mask = torch.zeros(batch_size, dtype=torch.bool, device=self.device)
+        # update_mask = torch.zeros(batch_size, dtype=torch.bool, device=self.device)
         if opt_valid.sum() > 0:
             keypoints2d = torch.cat([gt_keypoints_op_2d, gt_keypoints_2d], dim=1)
             keypoints2d = keypoints2d[opt_valid]
@@ -1463,26 +1466,22 @@ class MeshLoss3(MeshLoss2):
             gt_betas[opt_valid] = opt_betas
             has_smpl[opt_valid] = opt_has_smpl.float()
             gender[opt_valid] = -1
-            update_mask[opt_valid] = opt_update
+            # update_mask[opt_valid] = opt_update
 
         else:
             pass
 
         # update fits dict
-        all_idx = input_batch['opt_idx'].to(self.device)
-
-        # self.fits_dict.update(all_idx, gt_pose, gt_betas, update_mask)
-
-        # up_paras = [all_idx.detach(), gt_pose.detach(), gt_betas.detach(), update_mask.detach()]
-        up_paras = [all_idx.detach().cpu(), gt_pose.detach().cpu(), gt_betas.detach().cpu(), update_mask.detach().cpu()]
+        up_paras = [opt_idx[opt_update].detach().cpu(),
+                    gt_pose[opt_update].detach().cpu(),
+                    gt_betas[opt_update].detach().cpu(),
+                    opt_update[opt_update].detach().cpu()]
         up_paras = utils.all_gather(up_paras)
         up_idx = torch.cat([t[0].to(self.fits_dict.fit_device) for t in up_paras], dim=0)
         up_pose = torch.cat([t[1].to(self.fits_dict.fit_device) for t in up_paras], dim=0)
         up_betas = torch.cat([t[2].to(self.fits_dict.fit_device) for t in up_paras], dim=0)
         up_mask = torch.cat([t[3].to(self.fits_dict.fit_device) for t in up_paras], dim=0)
         self.fits_dict.update(up_idx, up_pose, up_betas, up_mask)
-
-
 
         # loss
         gt_vertices = gt_pose.new_zeros([batch_size, 6890, 3])
