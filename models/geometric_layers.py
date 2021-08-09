@@ -93,6 +93,7 @@ def proj_2d(X, camera, focal_length=5000, img_res=224):
     x_2d = 2 * (x_2d / img_res) - 1
     return x_2d
 
+
 def perspective_projection(points, rotation, translation,
                            focal_length, camera_center):
     """

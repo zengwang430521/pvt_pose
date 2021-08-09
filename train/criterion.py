@@ -593,7 +593,6 @@ class MeshLoss2(nn.Module):
 
 
 
-
 def angle_axis_to_rotation_matrix(angle_axis):
     """Convert 3d vector of axis-angle rotation to 4x4 rotation matrix
 
@@ -1221,10 +1220,10 @@ class MeshLoss3(MeshLoss2):
         self.focal_length = 5000.0
         self.loss_threhold = options.thre_simplify * (self.options.img_res / 224.0) ** 2
 
-        # self.smplx = _SMPL(config.SMPL_MODEL_DIR,
-        #                  create_transl=False).to(self.device)
-        # J_regressor_extra = np.load(config.JOINT_REGRESSOR_TRAIN_EXTRA)
-        # self.register_buffer('J_regressor_extra', torch.tensor(J_regressor_extra, dtype=torch.float32, device=device))
+        self.smplx = _SMPL(config.SMPL_MODEL_DIR,
+                         create_transl=False).to(self.device)
+        J_regressor_extra = np.load(config.JOINT_REGRESSOR_TRAIN_EXTRA)
+        self.register_buffer('J_regressor_extra', torch.tensor(J_regressor_extra, dtype=torch.float32, device=device))
 
         self.smpl_j = SMPL_JOINT(model_path=config.SMPL_MODEL_DIR, create_transl=False).to(self.device)
 
@@ -1401,6 +1400,28 @@ class MeshLoss3(MeshLoss2):
                                                   output='reprojection')
         return reprojection_loss
 
+    def apply_smplx(self, pose, shape):
+
+
+
+        flag_stage = False
+        if shape.dim() == 3:  # s, bs, 10
+            bs, s, _ = shape.shape
+            flag_stage = True
+            pose = pose.reshape(bs * s, 24, 3, 3)
+            shape = shape.reshape(bs * s, 10)
+
+        global_orient = pose[:, 1]
+        body_pose = pose[:,]
+
+        model_joints = self.get_opt_joints(smpl_output)
+
+        vertices = self.smpl(pose, shape)
+        if flag_stage:
+            vertices = vertices.reshape(bs, s, 6890, 3)
+        return vertices
+
+
     def forward(self, pred_para, input_batch, return_vis=False):
         """Training step."""
         dtype = torch.float32
@@ -1410,7 +1431,6 @@ class MeshLoss3(MeshLoss2):
             pred_para = (p.unsqueeze(1) for p in pred_para)
         pred_pose, pred_shape, pred_camera = pred_para
         bs, s,  _ = pred_shape.shape
-        pred_vertices = self.apply_smpl(pred_pose, pred_shape)
 
         # Grab data from the batch
         gt_keypoints_2d = input_batch['keypoints'].to(self.device)
@@ -1442,7 +1462,7 @@ class MeshLoss3(MeshLoss2):
 
             old_pose, old_shape = self.fits_dict.get_para(opt_idx, rot, flip)
             old_loss = self.get_old_opt_loss(old_pose, old_shape, keypoints2d)
-            joints_conf = keypoints2d[:, :, -1]
+            # joints_conf = keypoints2d[:, :, -1]
             # TODO: SPIN use mean without conf, it's so strange.
             old_loss = old_loss.mean(dim=-1)
             # old_loss = old_loss.sum(dim=-1) / (joints_conf ** 2).sum(dim=-1)
@@ -1483,17 +1503,22 @@ class MeshLoss3(MeshLoss2):
         up_mask = torch.cat([t[3].to(self.fits_dict.fit_device) for t in up_paras], dim=0)
         self.fits_dict.update(up_idx, up_pose, up_betas, up_mask)
 
-        # loss
+        # compute losses
+        losses = {}
+
+        # vertices loss
+        # pred_vertices = self.apply_smpl(pred_pose, pred_shape)
+        smpl_output = self.smplx(global_orient=pred_pose[:, -1, [0]],
+                                body_pose=pred_pose[:, -1, 1:],
+                                betas=pred_shape[:, -1],
+                                pose2rot=False)
+        sampled_vertices = smpl_output.vertices.reshape(bs, s, 6890, 3)
         gt_vertices = gt_pose.new_zeros([batch_size, 6890, 3])
         with torch.no_grad():
             gt_vertices[gender < 0] = self.smpl(gt_pose[gender < 0], gt_betas[gender < 0])
             gt_vertices[gender == 0] = self.male_smpl(gt_pose[gender == 0], gt_betas[gender == 0])
             gt_vertices[gender == 1] = self.female_smpl(gt_pose[gender == 1], gt_betas[gender == 1])
 
-
-        # compute losses
-        losses = {}
-        sampled_vertices = pred_vertices
         if self.options.adaptive_weight:
             # Get the confidence of the GT mesh, which is used as the weight of loss item.
             # The confidence is related to the fitting error and for the data with GT SMPL parameters,
@@ -1508,13 +1533,19 @@ class MeshLoss3(MeshLoss2):
             loss_mesh = self.shape_loss(sampled_vertices, gt_vertices, has_smpl, ada_weight) * self.options.lam_mesh
             losses['mesh'] = loss_mesh
 
-        '''loss on joints'''
+        '''loss on joints 3D'''
+        sampled_joints_3d = self.get_opt_joints(smpl_output).view(bs, s, -1, 3)
+
         weight_key = sampled_vertices.new_ones(batch_size)
         if self.options.gtkey3d_from_mesh:
             # For the data without GT 3D keypoints but with SMPL parameters, we can
             # get the GT 3D keypoints from the mesh. The confidence of the keypoints
             # is related to the confidence of the mesh.
-            gt_keypoints_3d_mesh = self.smpl.get_train_joints(gt_vertices)
+            # gt_keypoints_3d_mesh = self.smpl.get_train_joints(gt_vertices)
+            gt_keypoints_3d_mesh = self.smpl_j(global_orient=gt_pose[:, :3],
+                                               body_pose=gt_pose[:, 3:],
+                                               betas=gt_betas)[:, 25:]
+
             gt_keypoints_3d_mesh = torch.cat([gt_keypoints_3d_mesh,
                                               gt_keypoints_3d_mesh.new_ones([batch_size, 24, 1])],
                                              dim=-1)
@@ -1524,15 +1555,19 @@ class MeshLoss3(MeshLoss2):
             if ada_weight is not None:
                 weight_key[valid] = ada_weight[valid]
 
-        sampled_joints_3d = self.smpl.get_train_joints(sampled_vertices.view(bs*s, 6890, 3)).view(bs, s, -1, 3)
-        loss_keypoints_3d = self.keypoint_3d_loss(sampled_joints_3d, gt_keypoints_3d, has_pose_3d, weight_key)
+        # sampled_joints_3d = self.smpl.get_train_joints(sampled_vertices.view(bs*s, 6890, 3)).view(bs, s, -1, 3)
+        # loss_keypoints_3d = self.keypoint_3d_loss(sampled_joints_3d, gt_keypoints_3d, has_pose_3d, weight_key)
+
+        loss_keypoints_3d = self.keypoint_3d_loss(sampled_joints_3d[:, :, 25:], gt_keypoints_3d, has_pose_3d, weight_key)
         loss_keypoints_3d = loss_keypoints_3d * self.options.lam_key3d
         losses['key3D'] = loss_keypoints_3d
 
+        '''loss on joints 2D'''
         sampled_joints_2d = proj_2d(sampled_joints_3d.view(bs*s, -1, 3),
                                     pred_camera.view(bs*s, -1))[:, :, :2].view(bs, s, -1, 2)
-
-        loss_keypoints_2d = self.keypoint_loss(sampled_joints_2d, gt_keypoints_2d) * self.options.lam_key2d
+        keypoints2d = torch.cat([gt_keypoints_op_2d, gt_keypoints_2d], dim=1)
+        keypoints2d[:, :25, -1] = keypoints2d[:, :25, -1] * self.options.openpose_train_weight
+        loss_keypoints_2d = self.keypoint_loss(sampled_joints_2d, keypoints2d) * self.options.lam_key2d
         losses['key2D'] = loss_keypoints_2d
 
         # We add the 24 joints of SMPL model for the training on SURREAL dataset.
@@ -1579,7 +1614,7 @@ class MeshLoss3(MeshLoss2):
             data['gt_joint'] = gt_keypoints_2d[0:vis_num].detach()
             data['pred_vert'] = sampled_vertices[0:vis_num, -1].detach()
             data['pred_cam'] = pred_camera[0:vis_num, -1].detach()
-            data['pred_joint'] = sampled_joints_2d[0:vis_num, -1].detach()
+            data['pred_joint'] = sampled_joints_2d[0:vis_num, -1, 25:].detach()
             data['has_smpl'] = has_smpl[0:vis_num].detach()
             vis_data = data
 

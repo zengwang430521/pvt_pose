@@ -201,12 +201,22 @@ srun -p 3dv-share -w SH-IDC1-10-198-6-130 \
     --model=mypvt20_2_small --opt=adamw --lr=2.5e-4 --wd=1e-4 --lr_drop=90 \
     --img_res=224 --use_mc
 
+
 srun -p pat_earth \
 srun -p 3dv-share -w SH-IDC1-10-198-6-129\
 srun -p 3dv-share -x SH-IDC1-10-198-6-[132-135] \
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
     --ntasks 8 --job-name=mesh \
     --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=4 --kill-on-bad-exit=1 \
+    python -u main.py --dataset=spin \
+    --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=100 \
+    --name=hmr_opt --run_simplify --iter_simplify=100 \
+    --lam_mesh=0 --lam_key2d=5 --lam_key3d=5 --lam_smpl_pose=1 --lam_smpl_beta=0.001
+    --model=hmr --opt=adamw --lr=2.5e-4 --wd=1e-4 --lr_drop=90 \
+    --resume_from=logs/hmr_opt/checkpoints/checkpoint_latest.pth     --img_res=224 \
+    --use_mc
+
+
     python -u main.py --dataset=all --batch_size=16 --num_workers=4 --num_epochs=100 --summary_steps=100 \
     --name=hmr_all  --model=hmr --opt=adamw --lr=2.5e-4 --wd=1e-4 --lr_drop=90 \
     --resume_from=logs/hmr_all/checkpoints/checkpoint_latest.pth     --img_res=224 \

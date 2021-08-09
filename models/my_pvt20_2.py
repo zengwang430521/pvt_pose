@@ -10,7 +10,7 @@ from models.smpl_head import build_smpl_head
 import utils.config as cfg
 
 vis = False
-vis = True
+# vis = True
 
 
 def get_grid_loc(B, H, W, device):
