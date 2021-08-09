@@ -10,7 +10,7 @@ from models.smpl_head import build_smpl_head
 import utils.config as cfg
 
 vis = False
-
+vis = True
 
 
 def get_grid_loc(B, H, W, device):
@@ -224,7 +224,7 @@ def show_tokens(x, out, N_grid=14*14):
             ax.clear()
             ax.imshow(img, extent=[0, 1, 0, 1])
             loc = out[lv][1]
-            loc = 2 * loc - 1
+            loc = 0.5 * loc + 0.5
             loc_grid = loc[i, :N_grid].detach().cpu().numpy()
             ax.scatter(loc_grid[:, 0], 1 - loc_grid[:, 1], c='blue', s=0.4+lv*0.1)
             loc_ada = loc[i, N_grid:].detach().cpu().numpy()
