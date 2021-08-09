@@ -484,7 +484,7 @@ class ResampleBlock(nn.Module):
 
         # new points
         if self.extra_ratio > 0:
-            delta = self.delta_layer(x_down)
+            delta = self.delta_layer(x_down) * self.delta_factor
             loc_down = loc_down + delta
             x_down = inter_points(x, loc, loc_down)
 
