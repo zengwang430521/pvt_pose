@@ -330,7 +330,8 @@ class MeshLoss2(nn.Module):
         # Create loss functions
         self.criterion_shape = nn.L1Loss(reduction='none').to(self.device)
         self.criterion_keypoints = nn.MSELoss(reduction='none').to(self.device)
-        self.criterion_keypoints_3d = nn.L1Loss(reduction='none').to(self.device)
+        self.criterion_keypoints_3d = nn.MSELoss(reduction='none').to(self.device)
+        # self.criterion_keypoints_3d = nn.L1Loss(reduction='none').to(self.device)
         self.criterion_regr = nn.MSELoss(reduction='none').to(self.device)
 
     def apply_smpl(self, pose, shape):
@@ -1215,10 +1216,10 @@ class MeshLoss3(MeshLoss2):
         self.pose_prior = MaxMixturePrior(prior_folder='data',
                                           num_gaussians=8,
                                           dtype=torch.float32).to(device)
-        self.num_iters = options.iter_simplify
-        self.step_size = options.step_simplify
+        self.num_iters = options.iter_smplify
+        self.step_size = options.step_smplify
         self.focal_length = 5000.0
-        self.loss_threhold = options.thre_simplify * (self.options.img_res / 224.0) ** 2
+        self.loss_threhold = options.thre_smplify * (self.options.img_res / 224.0) ** 2
 
         self.smplx = _SMPL(config.SMPL_MODEL_DIR,
                          create_transl=False).to(self.device)
@@ -1265,7 +1266,7 @@ class MeshLoss3(MeshLoss2):
 
         # Get joint confidence
         joints_2d = keypoints_2d[:, :, :2]
-        joints_2d = (joints_2d + 1) * 0.5 * self.options.img_res
+        # joints_2d = (joints_2d + 1) * 0.5 * self.options.img_res
         joints_conf = keypoints_2d[:, :, -1]
 
         # Split SMPL pose to body pose and global orientation
@@ -1386,7 +1387,6 @@ class MeshLoss3(MeshLoss2):
         opt_joints = opt_joints[:, self.joint_map, :]
 
         # Get joint confidence
-        keypoints_2d[..., :-1] = (keypoints_2d[..., :-1] + 1) * 0.5 * self.options.img_res
         camera_center = 0.5 * self.options.img_res * torch.ones(batch_size, 2, device=self.device)
 
         opt_cam_t = estimate_translation(opt_joints, keypoints_2d, focal_length=self.focal_length, img_size=self.options.img_res)
@@ -1454,14 +1454,16 @@ class MeshLoss3(MeshLoss2):
         # opt_valid[0] = True; print('debug')
         # update_mask = torch.zeros(batch_size, dtype=torch.bool, device=self.device)
         if opt_valid.sum() > 0:
-            keypoints2d = torch.cat([gt_keypoints_op_2d, gt_keypoints_2d], dim=1)
-            keypoints2d = keypoints2d[opt_valid]
+            keypoints2d_orig = torch.cat([gt_keypoints_op_2d, gt_keypoints_2d], dim=1).clone()
+            keypoints2d_orig[..., :-1] = (keypoints2d_orig[..., :-1] + 1) * 0.5 * self.options.img_res
+            keypoints2d_orig = keypoints2d_orig[opt_valid]
+
             opt_idx = input_batch['opt_idx'][opt_valid].to(self.device)
             rot = input_batch['rot'][opt_valid].to(self.device)
             flip = input_batch['flip'][opt_valid].to(self.device)
 
             old_pose, old_shape = self.fits_dict.get_para(opt_idx, rot, flip)
-            old_loss = self.get_old_opt_loss(old_pose, old_shape, keypoints2d)
+            old_loss = self.get_old_opt_loss(old_pose, old_shape, keypoints2d_orig)
             # joints_conf = keypoints2d[:, :, -1]
             # TODO: SPIN use mean without conf, it's so strange.
             old_loss = old_loss.mean(dim=-1)
@@ -1470,7 +1472,7 @@ class MeshLoss3(MeshLoss2):
             init_pose = pred_pose[opt_valid, -1].detach()
             init_shape = pred_shape[opt_valid, -1].detach()
             init_camera = pred_camera[opt_valid, -1].detach()
-            opt_res = self.optimize((init_pose, init_shape, init_camera), keypoints2d)
+            opt_res = self.optimize((init_pose, init_shape, init_camera), keypoints2d_orig)
             new_loss = opt_res['reprojection_loss']
             new_loss = new_loss.mean(dim=-1)
             # new_loss = new_loss.sum(dim=-1) / (joints_conf ** 2).sum(dim=-1)
@@ -1604,6 +1606,7 @@ class MeshLoss3(MeshLoss2):
         losses['pose'] = loss_regr_pose
         losses['beta'] = loss_regr_betas
         losses['camera'] = ((torch.exp(-pred_camera[..., 0]*10)) ** 2).mean() * self.options.lam_camera
+
         # for visualize
         vis_data = None
         if return_vis:

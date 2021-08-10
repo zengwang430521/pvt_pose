@@ -105,7 +105,7 @@ def main(options):
     dataset_val = create_val_dataset(options.val_dataset, options)
     print('finish build dataset')
 
-    if options.run_simplify:
+    if options.run_smplify:
         criterion = MeshLoss3(options, device, dataset_train.dataset_infos)
     else:
         criterion = MeshLoss2(options, device)
@@ -207,7 +207,7 @@ def main(options):
                 'options': options,
                 'iter_num': summary_writer.iter_num,
             }, checkpoint_latest, _use_new_zipfile_serialization=False)
-            if options.run_simplify:
+            if options.run_smplify:
                 criterion.fits_dict.save()
 
             if (epoch + 1) % options.save_freq == 0:
