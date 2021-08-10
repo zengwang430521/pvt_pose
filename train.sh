@@ -204,10 +204,23 @@ srun -p 3dv-share -w SH-IDC1-10-198-6-130 \
 
 srun -p pat_earth \
 srun -p 3dv-share -x SH-IDC1-10-198-6-[132-135] \
-srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
 srun -p 3dv-share -w SH-IDC1-10-198-6-129\
-    --ntasks 8 --job-name=mesh \
+srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
+    --ntasks 16 --job-name=mesh \
     --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=4 --kill-on-bad-exit=1 \
+    python -u main.py --dataset=all --batch_size=12 --num_workers=4 --num_epochs=100 --summary_steps=100 \
+    --name=my20_2f_all_448f  --model=mypvt20_2_small --opt=adamw --lr=2.5e-4 --wd=1e-4 --lr_drop=90 \
+    --resume_from=logs/my20_2f_all_448f/checkpoints/checkpoint_latest.pth     --img_res=448 \
+    --pretrain_from=logs/my20_2f_all2/checkpoints/checkpoint0099.pth --use_mc
+
+    python -u main.py --dataset=spin \
+    --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=100 \
+    --name=hmr_opt --run_smplify --iter_smplify=100 \
+    --model=hmr --opt=adamw --lr=5e-5 --wd=1e-4 --lr_drop=90 \
+    --lam_mesh=0 --lam_key2d=300 --lam_key3d=300 --lam_smpl_pose=60 --lam_smpl_beta=0.060 --lam_camera=60 \
+    --resume_from=logs/hmr_opt/checkpoints/checkpoint_latest.pth     --img_res=224 \
+    --use_mc
+
     python -u main.py --dataset=spin \
     --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=100 \
     --name=hmr_debug --run_smplify --iter_smplify=1 \
@@ -218,15 +231,9 @@ srun -p 3dv-share -w SH-IDC1-10-198-6-129\
     python -u main.py --dataset=all --batch_size=12 --num_workers=4 --num_epochs=100 --summary_steps=100 \
     --name=my20_2f_all_448  --model=mypvt20_2_small --opt=adamw --lr=2.5e-4 --wd=1e-4 --lr_drop=90 \
     --resume_from=logs/my20_2f_all_448/checkpoints/checkpoint_latest.pth     --img_res=448 \
-    --pretrain_from=data/pretrained/my20_2_330.pth --use_mc
+    --pretrain_from=logs/my20_2f_all2/checkpoints/checkpoint0099.pth --use_mc
 
-    python -u main.py --dataset=spin \
-    --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=100 \
-    --name=hmr_opt --run_smplify --iter_smplify=100 \
-    --model=hmr --opt=adamw --lr=5e-5 --wd=1e-4 --lr_drop=90 \
-    --lam_mesh=0 --lam_key2d=300 --lam_key3d=300 --lam_smpl_pose=60 --lam_smpl_beta=0.060 --lam_camera=60 \
-    --resume_from=logs/hmr_opt/checkpoints/checkpoint_latest.pth     --img_res=224 \
-    --use_mc
+
 
 
     python -u main.py --dataset=all --batch_size=16 --num_workers=4 --num_epochs=100 --summary_steps=100 \
