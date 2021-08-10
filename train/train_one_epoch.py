@@ -80,7 +80,7 @@ def write_summary(summary_writer, loss_dict, vis_data):
 
         # Get LSP keypoints from the full list of keypoints
         gt_keypoints_2d_ = gt_keypoints_2d[i, to_lsp]
-        pred_keypoints_2d_ = pred_keypoints_2d.cpu().numpy()[i, to_lsp]
+        pred_keypoints_2d_ = pred_keypoints_2d.cpu().clamp(0, H).numpy()[i, to_lsp]
         vertices = pred_vertices[i].cpu().numpy()
         cam = pred_camera[i].cpu().numpy()
         rend_img = visualize_vert(img, H, gt_keypoints_2d_, vertices,
