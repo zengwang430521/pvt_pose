@@ -354,6 +354,7 @@ class DDPTrainOptions(object):
         optim.add_argument("--lam_key2d_smpl", type=float, default=1, help='lambda of 2D SMPL joint loss')
         optim.add_argument("--lam_key3d_smpl", type=float, default=2, help='lambda of 3D SMPL joint loss')
         optim.add_argument("--openpose_train_weight", type=float, default=0)
+        optim.add_argument("--lam_camera", type=float, default=1, help='lambda of camera')
 
         return
 
