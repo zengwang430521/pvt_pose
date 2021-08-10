@@ -1603,7 +1603,7 @@ class MeshLoss3(MeshLoss2):
         loss_regr_betas = loss_regr_betas * self.options.lam_smpl_beta
         losses['pose'] = loss_regr_pose
         losses['beta'] = loss_regr_betas
-        losses['camera'] = ((torch.exp(-pred_camera[:, 0]*10)) ** 2).mean() * self.options.lam_camera
+        losses['camera'] = ((torch.exp(-pred_camera[..., 0]*10)) ** 2).mean() * self.options.lam_camera
         # for visualize
         vis_data = None
         if return_vis:
