@@ -86,11 +86,13 @@ def proj_2d(X, camera, focal_length=5000, img_res=224):
                          camera[:, 2],
                          2 * focal_length / (img_res * camera[:, 0] + 1e-9)],
                         dim=-1)
-    camera_center = 0.5 * img_res * torch.ones(batch_size, 2, device=device)
+    # camera_center = 0.5 * img_res * torch.ones(batch_size, 2, device=device)
+    camera_center = torch.zeros(batch_size, 2, device=device)
 
     rotation = torch.eye(3, device=device).unsqueeze(0).expand(batch_size, -1, -1)
     x_2d = perspective_projection(X, rotation, cam_t, focal_length, camera_center)
-    x_2d = 2 * (x_2d / img_res) - 1
+    # x_2d = 2 * (x_2d / img_res) - 1
+    x_2d = 2 * (x_2d / img_res)
     return x_2d
 
 

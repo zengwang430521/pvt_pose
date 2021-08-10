@@ -330,8 +330,7 @@ class MeshLoss2(nn.Module):
         # Create loss functions
         self.criterion_shape = nn.L1Loss(reduction='none').to(self.device)
         self.criterion_keypoints = nn.MSELoss(reduction='none').to(self.device)
-        self.criterion_keypoints_3d = nn.MSELoss(reduction='none').to(self.device)
-        # self.criterion_keypoints_3d = nn.L1Loss(reduction='none').to(self.device)
+        self.criterion_keypoints_3d = nn.L1Loss(reduction='none').to(self.device)
         self.criterion_regr = nn.MSELoss(reduction='none').to(self.device)
 
     def apply_smpl(self, pose, shape):
@@ -1213,6 +1212,8 @@ class SMPL_JOINT(_SMPL):
 class MeshLoss3(MeshLoss2):
     def __init__(self, options, device, dataset_infos):
         super().__init__(options, device)
+        self.criterion_keypoints_3d = nn.MSELoss(reduction='none').to(self.device)
+
         self.pose_prior = MaxMixturePrior(prior_folder='data',
                                           num_gaussians=8,
                                           dtype=torch.float32).to(device)
@@ -1400,28 +1401,6 @@ class MeshLoss3(MeshLoss2):
                                                   output='reprojection')
         return reprojection_loss
 
-    def apply_smplx(self, pose, shape):
-
-
-
-        flag_stage = False
-        if shape.dim() == 3:  # s, bs, 10
-            bs, s, _ = shape.shape
-            flag_stage = True
-            pose = pose.reshape(bs * s, 24, 3, 3)
-            shape = shape.reshape(bs * s, 10)
-
-        global_orient = pose[:, 1]
-        body_pose = pose[:,]
-
-        model_joints = self.get_opt_joints(smpl_output)
-
-        vertices = self.smpl(pose, shape)
-        if flag_stage:
-            vertices = vertices.reshape(bs, s, 6890, 3)
-        return vertices
-
-
     def forward(self, pred_para, input_batch, return_vis=False):
         """Training step."""
         dtype = torch.float32
@@ -1510,7 +1489,7 @@ class MeshLoss3(MeshLoss2):
 
         # vertices loss
         # pred_vertices = self.apply_smpl(pred_pose, pred_shape)
-        smpl_output = self.smplx(global_orient=pred_pose[:, -1, [0]],
+        smpl_output = self.smplx(global_orient=pred_pose[:, -1, 0].unsqueeze(1),
                                 body_pose=pred_pose[:, -1, 1:],
                                 betas=pred_shape[:, -1],
                                 pose2rot=False)
@@ -1605,7 +1584,9 @@ class MeshLoss3(MeshLoss2):
         loss_regr_betas = loss_regr_betas * self.options.lam_smpl_beta
         losses['pose'] = loss_regr_pose
         losses['beta'] = loss_regr_betas
-        losses['camera'] = ((torch.exp(-pred_camera[..., 0]*10)) ** 2).mean() * self.options.lam_camera
+        # losses_camera = ((torch.exp(-pred_camera[..., 0]*10)) ** 2).mean() * self.options.lam_camera
+        losses_camera = nn.functional.relu(-pred_camera[..., 0]).mean() * self.options.lam_camera
+        losses['camera'] = losses_camera
 
         # for visualize
         vis_data = None
