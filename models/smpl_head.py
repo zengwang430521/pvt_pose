@@ -240,14 +240,8 @@ try:
     from torch_batch_svd import svd
     gpu_svd = True
     print('load gpu svd success!')
-    print('load gpu svd success!')
-    print('load gpu svd success!')
-    print('load gpu svd success!')
 except (ImportError, ModuleNotFoundError):
     gpu_svd = False
-    print('load gpu svd fail!')
-    print('load gpu svd fail!')
-    print('load gpu svd fail!')
     print('load gpu svd fail!')
 
 
