@@ -879,18 +879,36 @@ def mypvt20_2_small(pretrained=False, **kwargs):
 
     return model
 
+
+class MyPVTb(MyPVT):
+    def forward(self, x):
+        x = F.avg_pool2d(x, kernel_size=2)
+        x = self.forward_features(x)
+        x = self.head(x)
+        return x
+
+
+@register_model
+def mypvt20_2b_small(pretrained=False, **kwargs):
+    model = MyPVTb(
+        patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1], **kwargs)
+    model.default_cfg = _cfg()
+
+    return model
+
 # For test
 if __name__ == '__main__':
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    model = mypvt20_2_small(drop_path_rate=0.1).to(device)
+    model = mypvt20_2b_small(drop_path_rate=0.1).to(device)
     model.reset_drop_path(0.1)
 
     empty_input = torch.rand([2, 3, 224, 224], device=device)
     del device
 
     output = model(empty_input)
-    tmp = output.sum()
-    print(tmp)
+    # tmp = output.sum()
+    # print(tmp)
 
     print('Finish')
 
