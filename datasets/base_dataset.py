@@ -295,7 +295,7 @@ class BaseDataset(Dataset):
         # Process image
         img = self.rgb_processing(img, center, sc*scale, rot, flip, pn)
         # Store image before normalization to use it in visualization
-        item['img_orig'] = img.clone()
+        # item['img_orig'] = img.clone()
         item['img'] = self.normalize_img(img)
         item['imgname'] = imgname
 

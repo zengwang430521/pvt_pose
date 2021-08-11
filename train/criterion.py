@@ -305,15 +305,20 @@ class MeshLoss(nn.Module):
         if return_vis:
             data = {}
             vis_num = min(4, batch_size)
-            data['image'] = input_batch['img_orig'][0:vis_num].detach()
+            images = input_batch['img'][0:vis_num].detach()
+            images = images * torch.tensor([0.229, 0.224, 0.225], device=images.device).reshape(1, 3, 1, 1)
+            images = images + torch.tensor([0.485, 0.456, 0.406], device=images.device).reshape(1, 3, 1, 1)
+            data['image'] = images.detach()
             data['gt_vert'] = gt_vertices[0:vis_num].detach()
             data['gt_joint'] = gt_keypoints_2d[0:vis_num].detach()
             data['pred_vert'] = sampled_vertices[0:vis_num, -1].detach()
             data['pred_cam'] = pred_camera[0:vis_num, -1].detach()
-            data['pred_joint'] = sampled_joints_2d[0:vis_num, -1].detach()
+            data['pred_joint'] = sampled_joints_2d[0:vis_num, -1, 25:].detach()
+            data['has_smpl'] = has_smpl[0:vis_num].detach()
             vis_data = data
 
         return losses, vis_data
+
 
 # Without data selection
 class MeshLoss2(nn.Module):
@@ -581,16 +586,19 @@ class MeshLoss2(nn.Module):
         if return_vis:
             data = {}
             vis_num = min(4, batch_size)
-            data['image'] = input_batch['img_orig'][0:vis_num].detach()
+            images = input_batch['img'][0:vis_num].detach()
+            images = images * torch.tensor([0.229, 0.224, 0.225], device=images.device).reshape(1, 3, 1, 1)
+            images = images + torch.tensor([0.485, 0.456, 0.406], device=images.device).reshape(1, 3, 1, 1)
+            data['image'] = images.detach()
             data['gt_vert'] = gt_vertices[0:vis_num].detach()
             data['gt_joint'] = gt_keypoints_2d[0:vis_num].detach()
             data['pred_vert'] = sampled_vertices[0:vis_num, -1].detach()
             data['pred_cam'] = pred_camera[0:vis_num, -1].detach()
-            data['pred_joint'] = sampled_joints_2d[0:vis_num, -1].detach()
+            data['pred_joint'] = sampled_joints_2d[0:vis_num, -1, 25:].detach()
+            data['has_smpl'] = has_smpl[0:vis_num].detach()
             vis_data = data
 
         return losses, vis_data
-
 
 
 def angle_axis_to_rotation_matrix(angle_axis):
@@ -1086,7 +1094,7 @@ class SMPL_JOINT(_SMPL):
         for i in range(n_select):
             idx = J_idx_select[i]
             J_regressor_select[i, idx] = 1
-        J_regressor_extra = np.load(config.JOINT_REGRESSOR_TRAIN_EXTRA)
+        J_regressor_extra = np.load(config.JOINT_REGRESSOR_TRAIN_EXTRA_SPIN)
         J_regressor_extra = torch.tensor(J_regressor_extra).float()
         J_regressor_extra_all = torch.cat([J_regressor_select, J_regressor_extra], dim=0)
         valid_vidx = J_regressor_extra_all.sum(dim=0).nonzero()
@@ -1224,7 +1232,7 @@ class MeshLoss3(MeshLoss2):
 
         self.smplx = _SMPL(config.SMPL_MODEL_DIR,
                          create_transl=False).to(self.device)
-        J_regressor_extra = np.load(config.JOINT_REGRESSOR_TRAIN_EXTRA)
+        J_regressor_extra = np.load(config.JOINT_REGRESSOR_TRAIN_EXTRA_SPIN)
         self.register_buffer('J_regressor_extra', torch.tensor(J_regressor_extra, dtype=torch.float32, device=device))
 
         self.smpl_j = SMPL_JOINT(model_path=config.SMPL_MODEL_DIR, create_transl=False).to(self.device)
@@ -1242,6 +1250,7 @@ class MeshLoss3(MeshLoss2):
         extra_joints = vertices2joints(self.J_regressor_extra, smpl_output.vertices)
         joints = torch.cat([smpl_output.joints, extra_joints], dim=1)
         joints = joints[:, self.joint_map, :]
+
         return joints
 
     def optimize(self, init_para, keypoints_2d):
@@ -1585,6 +1594,7 @@ class MeshLoss3(MeshLoss2):
         losses['pose'] = loss_regr_pose
         losses['beta'] = loss_regr_betas
         # losses_camera = ((torch.exp(-pred_camera[..., 0]*10)) ** 2).mean() * self.options.lam_camera
+        # losses_camera = torch.exp(-pred_camera[..., 0]*20).mean() * self.options.lam_camera
         losses_camera = nn.functional.relu(-pred_camera[..., 0]).mean() * self.options.lam_camera
         losses['camera'] = losses_camera
 
@@ -1593,7 +1603,10 @@ class MeshLoss3(MeshLoss2):
         if return_vis:
             data = {}
             vis_num = min(4, batch_size)
-            data['image'] = input_batch['img_orig'][0:vis_num].detach()
+            images = input_batch['img'][0:vis_num].detach()
+            images = images * torch.tensor([0.229, 0.224, 0.225], device=images.device).reshape(1, 3, 1, 1)
+            images = images + torch.tensor([0.485, 0.456, 0.406], device=images.device).reshape(1, 3, 1, 1)
+            data['image'] = images.detach()
             data['gt_vert'] = gt_vertices[0:vis_num].detach()
             data['gt_joint'] = gt_keypoints_2d[0:vis_num].detach()
             data['pred_vert'] = sampled_vertices[0:vis_num, -1].detach()
@@ -1602,11 +1615,44 @@ class MeshLoss3(MeshLoss2):
             data['has_smpl'] = has_smpl[0:vis_num].detach()
             vis_data = data
 
+        # # for debug visualize
+        # import matplotlib.pyplot as plt
+        # im = input_batch['img_orig'][0].cpu().permute(1,2,0)
+        # keypoints2d = torch.cat([gt_keypoints_op_2d, gt_keypoints_2d], dim=1)
+        # joints_2d = keypoints2d[0].detach().cpu()
+        # ax = plt.subplot(1, 2, 1)
+        # ax.imshow(im, extent=[-1, 1, -1, 1])
+        #
+        # ax = plt.subplot(1, 2, 2, projection='3d')
+        # smpl_out = self.smplx()
+        # vertices = smpl_out.vertices[0].detach().cpu()
+        # joints_3d = self.get_opt_joints(smpl_out)
+        # joints_3d = joints_3d[0].detach().cpu()
+        # ax.scatter(vertices[:, 0], vertices[:, 1], vertices[:, 2], color='blue')
+        #
+        # for k in range(49):
+        #     valid = joints_2d[k, -1]
+        #     if valid > 0:
+        #         ax = plt.subplot(1, 3, 1)
+        #         ax.clear()
+        #         ax.imshow(im, extent=[-1, 1, -1, 1])
+        #         ax.scatter(joints_2d[k, 0], -joints_2d[k, 1], color='red')
+        #
+        #         ax = plt.subplot(1, 3, 2, projection='3d')
+        #         ax.clear()
+        #         ax.scatter(vertices[:, 0], vertices[:, 1], vertices[:, 2], color='blue', s=0.1)
+        #         ax.scatter(joints_3d[k, 0], joints_3d[k, 1], joints_3d[k, 2], color='red')
+        #         ax.view_init(azim=-80, elev=109.)
+        #
+        #         ax = plt.subplot(1, 3, 3, projection='3d')
+        #         ax.clear()
+        #         ax.scatter(vertices[:, 0], vertices[:, 1], vertices[:, 2], color='blue', s=0.1)
+        #         ax.scatter(joints_3d[k, 0], joints_3d[k, 1], joints_3d[k, 2], color='red')
+        #         ax.view_init(azim=88, elev=-74)
+        #
+        #         t=0
+
         return losses, vis_data
-
-
-
-
 
 
 class JointEvaluator(nn.Module):

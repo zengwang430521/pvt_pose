@@ -96,6 +96,9 @@ DATASET_FOLDERS = {'h36m-train': H36M_ROOT,
 CUBE_PARTS_FILE = 'data/cube_parts.npy'
 JOINT_REGRESSOR_TRAIN_EXTRA = 'data/J_regressor_extra.npy'
 VERTEX_TEXTURE_FILE = 'data/vertex_texture.npy'
+JOINT_REGRESSOR_TRAIN_EXTRA_SPIN = 'data/spin_data/J_regressor_extra.npy'
+
+
 # SMPL_FILE = 'data/basicModel_neutral_lbs_10_207_0_v1.0.0.pkl'
 # MALE_SMPL_FILE = 'data/basicmodel_m_lbs_10_207_0_v1.0.0.pkl'
 # FEMALE_SMPL_FILE = 'data/basicModel_f_lbs_10_207_0_v1.0.0.pkl'
