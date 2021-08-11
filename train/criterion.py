@@ -313,7 +313,7 @@ class MeshLoss(nn.Module):
             data['gt_joint'] = gt_keypoints_2d[0:vis_num].detach()
             data['pred_vert'] = sampled_vertices[0:vis_num, -1].detach()
             data['pred_cam'] = pred_camera[0:vis_num, -1].detach()
-            data['pred_joint'] = sampled_joints_2d[0:vis_num, -1, 25:].detach()
+            data['pred_joint'] = sampled_joints_2d[0:vis_num, -1].detach()
             data['has_smpl'] = has_smpl[0:vis_num].detach()
             vis_data = data
 
@@ -594,7 +594,7 @@ class MeshLoss2(nn.Module):
             data['gt_joint'] = gt_keypoints_2d[0:vis_num].detach()
             data['pred_vert'] = sampled_vertices[0:vis_num, -1].detach()
             data['pred_cam'] = pred_camera[0:vis_num, -1].detach()
-            data['pred_joint'] = sampled_joints_2d[0:vis_num, -1, 25:].detach()
+            data['pred_joint'] = sampled_joints_2d[0:vis_num, -1].detach()
             data['has_smpl'] = has_smpl[0:vis_num].detach()
             vis_data = data
 
