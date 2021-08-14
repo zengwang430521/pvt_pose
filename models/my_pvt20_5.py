@@ -643,8 +643,8 @@ class DownLayer(nn.Module):
         self.T_min = 1
         self.T_decay = 0.9998
         # self.conv = nn.Conv2d(embed_dim, dim_out, kernel_size=3, stride=1, padding=1)
-        self.conv = DeformConvPack(in_chans, embed_dim, kernel_size=patch_size, stride=stride,
-                              padding=(patch_size[0] // 2, patch_size[1] // 2))
+        self.conv = DeformConvPack(embed_dim, dim_out, kernel_size=3, stride=1,
+                              padding=(1, 1))
         # self.conv = PartialConv2d(embed_dim, self.block.dim_out, kernel_size=3, stride=1, padding=1)
         self.norm = nn.LayerNorm(self.dim_out)
         self.conf = nn.Linear(self.dim_out, 1)
