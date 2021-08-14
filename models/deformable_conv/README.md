@@ -5,10 +5,6 @@ Ported from the original [MXNet implementation](https://github.com/msracver/Defo
 
 Refer to [mmdetection branch](https://github.com/chengdazhi/Deformable-Convolution-V2-PyTorch/tree/mmdetection) in this repo for a complete framework. Results of DCNv2 based on mmdetection code base can be found at [model zoo](https://github.com/chengdazhi/Deformable-Convolution-V2-PyTorch/blob/mmdetection/MODEL_ZOO.md#deformable-conv-v2). Many thanks to [mmdetection](https://github.com/open-mmlab/mmdetection) for their strong and clean framework.
 
-Operators in master branch are compatible with pytorch_v0.4.1. For operators on pytorch v1.0.0 (implemented by [Jiarui Xu](https://github.com/xvjiarui)), please refer to [pytorch_1.0.0 branch](https://github.com/chengdazhi/Deformable-Convolution-V2-PyTorch/tree/pytorch_1.0.0).
-
-Thanks to [Kai Chen](https://github.com/hellock) and other contributors from mmlab, DCNv2 is now included in the official mmdetection repo based on the master branch of this one. It is now written with the new cpp extension apis and it supports both PyTorch 0.4.1 and 1.0, with some minor speed and memory optimization. Results and models can be found at https://github.com/open-mmlab/mmdetection/tree/master/configs/dcn.
-
 ## Build
 
 ```
@@ -40,7 +36,3 @@ This repo provides the deformable conv layer which can reproduce the results in 
       end
 
     In the previous operator, S is fixed as 1. In the updated operator, S can be set by the *im2col_step* parameter, whose default value is min(N, 64). The updated operator is significantly faster than the existing one when the image batch size is large.
-
-## License
-
-This repo is released under MIT license. 
