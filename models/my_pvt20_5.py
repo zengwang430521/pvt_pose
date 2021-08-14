@@ -13,7 +13,7 @@ vis = False
 # vis = True
 
 '''deformable conv when down sampling'''
-from models.deformable_conv.modules import DeformConv
+from models.deformable_conv.modules import DeformConvPack
 
 def get_grid_loc(B, H, W, device):
     y_g, x_g = torch.arange(H, device=device).float(), torch.arange(W, device=device).float()
@@ -513,7 +513,7 @@ class OverlapPatchEmbed(nn.Module):
         # self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=stride,
         #                       padding=(patch_size[0] // 2, patch_size[1] // 2))
 
-        self.proj = DeformConv(in_chans, embed_dim, kernel_size=patch_size, stride=stride,
+        self.proj = DeformConvPack(in_chans, embed_dim, kernel_size=patch_size, stride=stride,
                               padding=(patch_size[0] // 2, patch_size[1] // 2))
 
         self.norm = nn.LayerNorm(embed_dim)
@@ -642,7 +642,9 @@ class DownLayer(nn.Module):
         self.register_buffer('T', torch.tensor(1.0, dtype=torch.float))
         self.T_min = 1
         self.T_decay = 0.9998
-        self.conv = nn.Conv2d(embed_dim, dim_out, kernel_size=3, stride=1, padding=1)
+        # self.conv = nn.Conv2d(embed_dim, dim_out, kernel_size=3, stride=1, padding=1)
+        self.conv = DeformConvPack(in_chans, embed_dim, kernel_size=patch_size, stride=stride,
+                              padding=(patch_size[0] // 2, patch_size[1] // 2))
         # self.conv = PartialConv2d(embed_dim, self.block.dim_out, kernel_size=3, stride=1, padding=1)
         self.norm = nn.LayerNorm(self.dim_out)
         self.conf = nn.Linear(self.dim_out, 1)
