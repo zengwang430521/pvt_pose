@@ -191,8 +191,8 @@ def evaluate(model, evaluator, dataloader, device):
             error_pa_spin = reconstruction_error(pred_joints_3d_spin.cpu().numpy(), gt_joints_3d_spin.cpu().numpy(),
                                                  reduction=None) * 1000
 
-            mpjpe_spin.append(error)
-            mpjpe_pa_spin.append(error_pa)
+            mpjpe_spin.append(error_spin)
+            mpjpe_pa_spin.append(error_pa_spin)
 
 
             metric_logger.update(MPJPE=float(error.mean()),
