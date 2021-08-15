@@ -201,7 +201,7 @@ srun -p 3dv-share -w SH-IDC1-10-198-6-130 \
     --model=mypvt20_2_small --opt=adamw --lr=2.5e-4 --wd=1e-4 --lr_drop=90 \
     --img_res=224 --use_mc
 
-srun -p pat_earth --ntasks 1 --job-name=make --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=1 --kill-on-bad-exit=1 sh make.sh
+srun -p 3dv-share --ntasks 1 --job-name=make --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=1 --kill-on-bad-exit=1 sh make.sh
 
 srun -p pat_earth \
 srun -p 3dv-share -x SH-IDC1-10-198-6-[132-135] \

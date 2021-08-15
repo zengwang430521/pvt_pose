@@ -9,7 +9,10 @@ from torch import nn
 from torch.nn import init
 from torch.nn.modules.utils import _pair
 
-from functions.deform_conv_func import DeformConvFunction
+try:
+    from functions.deform_conv_func import DeformConvFunction
+except:
+    print('deformable conv is not available')
 
 class DeformConv(nn.Module):
 
