@@ -41,3 +41,14 @@ import torch
 B, N, C = 2, 3, 4
 x = torch.rand(B, N, C, requires_grad=True)
 w = torch.rand(N, C, 9)
+
+
+
+
+
+
+
+
+
+
+

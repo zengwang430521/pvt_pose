@@ -1654,7 +1654,6 @@ class MeshLoss3(MeshLoss2):
 
         return losses, vis_data
 
-
 class JointEvaluator(nn.Module):
     def __init__(self, options, device):
         super().__init__()
@@ -1669,6 +1668,11 @@ class JointEvaluator(nn.Module):
         self.pred_joints = []
         self.gt_joints = []
         self.mpjpe = []
+        
+        self.spin_h36m_regressor = torch.from_numpy(np.load(config.JOINT_REGRESSOR_H36M)).float().to(self.device)
+        self.spin_joint_mapper = constants.H36M_TO_J17 if options.val_dataset == 'mpi-inf-3dhp' else constants.H36M_TO_J14
+
+
 
     def apply_smpl(self, pose, shape):
         flag_stage = False
@@ -1704,11 +1708,25 @@ class JointEvaluator(nn.Module):
                 gt_vertices[gender == 0] = self.male_smpl(gt_pose[gender == 0], gt_betas[gender == 0])
                 gt_vertices[gender == 1] = self.female_smpl(gt_pose[gender == 1], gt_betas[gender == 1])
             gt_joints_3d = self.smpl.get_train_joints(gt_vertices)[:, self.joint_mapper]
+
+            gt_joints_3d_spin = torch.matmul(self.spin_h36m_regressor[None, ...], gt_vertices)
+            gt_pelvis = gt_joints_3d_spin[:, [0], :].clone()
+            gt_joints_3d_spin = gt_joints_3d_spin[:, self.spin_joint_mapper, :]
+            gt_joints_3d_spin = gt_joints_3d_spin - gt_pelvis
+
         else:
             gt_joints_3d = input_batch['pose_3d'][:, self.joint_mapper, :3].to(self.device)
+            gt_joints_3d_spin = input_batch['pose_3d'][:, self.spin_joint_mapper, :3].to(self.device)
 
         gt_pelvis = (gt_joints_3d[:, [2]] + gt_joints_3d[:, [3]]) / 2
         gt_joints_3d = gt_joints_3d - gt_pelvis
         pred_pelvis = (pred_joints_3d[:, [2]] + pred_joints_3d[:, [3]]) / 2
         pred_joints_3d = pred_joints_3d - pred_pelvis
-        return pred_joints_3d, gt_joints_3d
+
+        # eval using spin regressor
+        pred_joints_3d_spin = torch.matmul(self.spin_h36m_regressor[None, ...], pred_vertices)
+        pred_pelvis_spin = pred_joints_3d_spin[:, [0], :].clone()
+        pred_joints_3d_spin = pred_joints_3d_spin[:, self.spin_joint_mapper, :]
+        pred_joints_3d_spin = pred_joints_3d_spin - pred_pelvis_spin
+
+        return pred_joints_3d, gt_joints_3d, pred_joints_3d_spin, gt_joints_3d_spin
