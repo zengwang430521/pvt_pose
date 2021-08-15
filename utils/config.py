@@ -108,6 +108,7 @@ FEMALE_SMPL_FILE = 'data/smpl/SMPL_FEMALE.pkl'
 
 
 JOINT_REGRESSOR_H36M = 'data/J_regressor_h36m.npy'
+JOINT_REGRESSOR_H36M_SPIN = 'data/spin_data/J_regressor_h36m.npy'
 LSP_REGRESSOR_EVAL = 'data/smpl2lsp_j_regressor_nt_v2.npy'
 
 """

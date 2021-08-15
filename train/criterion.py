@@ -1669,7 +1669,7 @@ class JointEvaluator(nn.Module):
         self.gt_joints = []
         self.mpjpe = []
         
-        self.spin_h36m_regressor = torch.from_numpy(np.load(config.JOINT_REGRESSOR_H36M)).float().to(self.device)
+        self.spin_h36m_regressor = torch.from_numpy(np.load(config.JOINT_REGRESSOR_H36M_SPIN)).float().to(self.device)
         self.spin_joint_mapper = constants.H36M_TO_J17 if options.val_dataset == 'mpi-inf-3dhp' else constants.H36M_TO_J14
 
 
