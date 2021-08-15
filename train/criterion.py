@@ -1672,8 +1672,6 @@ class JointEvaluator(nn.Module):
         self.spin_h36m_regressor = torch.from_numpy(np.load(config.JOINT_REGRESSOR_H36M_SPIN)).float().to(self.device)
         self.spin_joint_mapper = constants.H36M_TO_J17 if options.val_dataset == 'mpi-inf-3dhp' else constants.H36M_TO_J14
 
-
-
     def apply_smpl(self, pose, shape):
         flag_stage = False
         if shape.dim() == 3:  # s, bs, 10
@@ -1716,7 +1714,8 @@ class JointEvaluator(nn.Module):
 
         else:
             gt_joints_3d = input_batch['pose_3d'][:, self.joint_mapper, :3].to(self.device)
-            gt_joints_3d_spin = input_batch['pose_3d'][:, self.spin_joint_mapper, :3].to(self.device)
+            # gt_joints_3d_spin = input_batch['pose_3d'][:, self.spin_joint_mapper, :3].to(self.device)
+            gt_joints_3d_spin = input_batch['pose_3d'][:, self.joint_mapper, :3].to(self.device)
 
         gt_pelvis = (gt_joints_3d[:, [2]] + gt_joints_3d[:, [3]]) / 2
         gt_joints_3d = gt_joints_3d - gt_pelvis
