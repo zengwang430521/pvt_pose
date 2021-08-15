@@ -13,7 +13,10 @@ vis = False
 # vis = True
 
 '''deformable conv when down sampling'''
-from models.deformable_conv.modules import DeformConvPack
+try:
+    from models.deformable_conv.modules import DeformConvPack
+except:
+    print('deformable conv is not available')
 
 def get_grid_loc(B, H, W, device):
     y_g, x_g = torch.arange(H, device=device).float(), torch.arange(W, device=device).float()
