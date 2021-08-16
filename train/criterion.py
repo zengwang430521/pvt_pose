@@ -1440,7 +1440,7 @@ class MeshLoss3(MeshLoss2):
         opt_valid = has_smpl < 1
         # opt_valid = has_smpl < 2; print('debug')
         # opt_valid[0] = True; print('debug')
-        # update_mask = torch.zeros(batch_size, dtype=torch.bool, device=self.device)
+        update_mask = torch.zeros(batch_size, dtype=torch.bool, device=self.device)
         if opt_valid.sum() > 0:
             keypoints2d_orig = torch.cat([gt_keypoints_op_2d, gt_keypoints_2d], dim=1).clone()
             keypoints2d_orig[..., :-1] = (keypoints2d_orig[..., :-1] + 1) * 0.5 * self.options.img_res
@@ -1476,16 +1476,22 @@ class MeshLoss3(MeshLoss2):
             gt_betas[opt_valid] = opt_betas
             has_smpl[opt_valid] = opt_has_smpl.float()
             gender[opt_valid] = -1
-            # update_mask[opt_valid] = opt_update
+            update_mask[opt_valid] = opt_update
 
+            # update fits dict
+            up_paras = [opt_idx[opt_update].detach().cpu(),
+                        opt_pose[opt_update].detach().cpu(),
+                        opt_betas[opt_update].detach().cpu(),
+                        opt_update[opt_update].detach().cpu()]
         else:
-            pass
+            # update fits dict
+            update_mask = update_mask > 0
+            up_paras = [input_batch['opt_idx'][update_mask].detach().cpu(),
+                        gt_pose[update_mask].detach().cpu(),
+                        gt_betas[update_mask].detach().cpu(),
+                        update_mask[update_mask].detach().cpu()]
 
-        # update fits dict
-        up_paras = [opt_idx[opt_update].detach().cpu(),
-                    opt_pose[opt_update].detach().cpu(),
-                    opt_betas[opt_update].detach().cpu(),
-                    opt_update[opt_update].detach().cpu()]
+
         up_paras = utils.all_gather(up_paras)
         up_idx = torch.cat([t[0].to(self.fits_dict.fit_device) for t in up_paras], dim=0)
         up_pose = torch.cat([t[1].to(self.fits_dict.fit_device) for t in up_paras], dim=0)
@@ -1653,6 +1659,7 @@ class MeshLoss3(MeshLoss2):
         #         t=0
 
         return losses, vis_data
+
 
 class JointEvaluator(nn.Module):
     def __init__(self, options, device):
