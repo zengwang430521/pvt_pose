@@ -191,7 +191,7 @@ spring.submit arun -p spring_scheduler -n1 --gpu \
 srun -p 3dv-share -w SH-IDC1-10-198-6-130 \
     --ntasks 1 --job-name=spin \
     --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=4 --kill-on-bad-exit=1 \
-    python -u main.py --dataset=spin \
+    python main.py --dataset=spin \
     --batch_size=64 --num_workers=4 --num_epochs=100 --summary_steps=100 \
     --name=hmr_opt_f --run_smplify --iter_smplify=50 \
     --model=hmr --opt=adamw --lr=3e-5 --wd=1e-4 --lr_drop=90 \
