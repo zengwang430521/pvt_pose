@@ -209,6 +209,14 @@ srun -p 3dv-share -w SH-IDC1-10-198-6-129\
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
     --ntasks 8 --job-name=mesh \
     --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=4 --kill-on-bad-exit=1 \
+   python -u main.py --dataset=spin \
+    --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=100 \
+    --name=hmr_opt_f2 --run_smplify --iter_smplify=50 \
+    --model=hmr --opt=adamw --lr=12e-5 --wd=1e-4 --lr_drop=90 \
+     --lam_mesh=0 --lam_key2d=300 --lam_key3d=300 --lam_smpl_pose=60 --lam_smpl_beta=0.060 --lam_camera=60 \
+    --resume_from=logs/hmr_opt_f2/checkpoints/checkpoint_latest.pth     --img_res=224 \
+    --pretrain_from=logs/hmr_all/checkpoints/checkpoint_latest.pth --use_mc
+
     python -u main.py --dataset=all --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=100 \
     --name=my20_4c_all_f --model=mypvt20_4c_small --opt=adamw --lr=2.5e-4 --wd=1e-4 --lr_drop=90 \
     --resume_from=logs/my20_4c_all_f/checkpoints/checkpoint_latest.pth     --img_res=224 \
