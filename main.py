@@ -167,7 +167,7 @@ def main(options):
                 for pg, pg_old in zip(optimizer.param_groups, p_groups):
                     pg['lr'] = pg_old['lr']
                     pg['initial_lr'] = pg_old['initial_lr']
-                print(optimizer.param_groups)
+                # print(optimizer.param_groups)
                 lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
                 lr_scheduler.step(lr_scheduler.last_epoch)
                 options.start_epoch = checkpoint['epoch'] + 1

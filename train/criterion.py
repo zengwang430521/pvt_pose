@@ -1491,12 +1491,15 @@ class MeshLoss3(MeshLoss2):
                         gt_betas[update_mask].detach().cpu(),
                         update_mask[update_mask].detach().cpu()]
 
+        if utils.get_world_size() > 1:
+            up_paras = utils.all_gather(up_paras)
+            up_idx = torch.cat([t[0].to(self.fits_dict.fit_device) for t in up_paras], dim=0)
+            up_pose = torch.cat([t[1].to(self.fits_dict.fit_device) for t in up_paras], dim=0)
+            up_betas = torch.cat([t[2].to(self.fits_dict.fit_device) for t in up_paras], dim=0)
+            up_mask = torch.cat([t[3].to(self.fits_dict.fit_device) for t in up_paras], dim=0)
+        else:
+            up_idx, up_pose, up_betas, up_mask = up_paras
 
-        up_paras = utils.all_gather(up_paras)
-        up_idx = torch.cat([t[0].to(self.fits_dict.fit_device) for t in up_paras], dim=0)
-        up_pose = torch.cat([t[1].to(self.fits_dict.fit_device) for t in up_paras], dim=0)
-        up_betas = torch.cat([t[2].to(self.fits_dict.fit_device) for t in up_paras], dim=0)
-        up_mask = torch.cat([t[3].to(self.fits_dict.fit_device) for t in up_paras], dim=0)
         self.fits_dict.update(up_idx, up_pose, up_betas, up_mask)
 
         # compute losses
