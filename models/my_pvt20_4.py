@@ -966,7 +966,6 @@ class MyPVT(nn.Module):
 
         return x
 
-
 @register_model
 def mypvt20_4_small(pretrained=False, **kwargs):
     model = MyPVT(
@@ -975,7 +974,6 @@ def mypvt20_4_small(pretrained=False, **kwargs):
     model.default_cfg = _cfg()
 
     return model
-
 
 
 class MyPVTb(nn.Module):
