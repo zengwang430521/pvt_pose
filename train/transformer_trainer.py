@@ -33,6 +33,7 @@ from models.my_pvt20_2 import mypvt20_2_small, mypvt20_2b_small
 from models.my_pvt20_3 import mypvt20_3_small, mypvt20_3a_small
 from models.my_pvt20_4 import mypvt20_4_small, mypvt20_4b_small, mypvt20_4c_small, mypvt20_4d_small
 from models.my_pvt20_5 import mypvt20_5_small
+from models.my_pvt20_6 import mypvt20_6_small
 from models.my_pvt21 import mypvt21_small
 from models.my_pvt22 import mypvt22_small
 from models.my_pvt25c import mypvt2520_small, mypvt2520_2_small
@@ -78,6 +79,7 @@ model_dict = {
     'mypvt20_4c_small': mypvt20_4c_small,
     'mypvt20_4d_small': mypvt20_4d_small,
     'mypvt20_5_small': mypvt20_5_small,
+    'mypvt20_6_small': mypvt20_6_small,
     # 'mypvt20c_small': mypvt20c_small,
     'mypvt21_small': mypvt21_small,
     'mypvt22_small': mypvt22_small,
