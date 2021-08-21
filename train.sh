@@ -195,7 +195,7 @@ srun -p 3dv-share -w SH-IDC1-10-198-6-130 \
      --batch_size=64 --num_workers=4 --num_epochs=100 --summary_steps=100 \
      --model=hmr --opt=adamw --lr=3e-5 --wd=1e-4 --lr_drop=90 \
       --lam_mesh=0 --lam_key2d=300 --lam_key3d=300 --lam_smpl_pose=60 --lam_smpl_beta=0.060 --lam_camera=60 \
-     --name=hmr_opt_f2 --run_smplify --iter_smplify=50 \
+     --name=hmr_opt_f2 --run_smplify --iter_smplify=0 \
      --resume_from=logs/hmr_opt_f2/checkpoints/checkpoint_latest.pth     --img_res=224 \
      --pretrain_from=logs/hmr_all/checkpoints/checkpoint_latest.pth --use_mc
 
