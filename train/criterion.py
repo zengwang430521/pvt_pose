@@ -1483,10 +1483,10 @@ class MeshLoss3(MeshLoss2):
             update_mask[opt_valid] = opt_update
 
             # update fits dict
-            up_paras = [opt_idx[opt_update].detach().cpu(),
-                        opt_pose[opt_update].detach().cpu(),
-                        opt_betas[opt_update].detach().cpu(),
-                        opt_update[opt_update].detach().cpu()]
+            up_paras = [opt_idx[opt_update].detach().to(self.fits_dict.fit_device),
+                        opt_pose[opt_update].detach().to(self.fits_dict.fit_device),
+                        opt_betas[opt_update].detach().to(self.fits_dict.fit_device),
+                        opt_update[opt_update].detach().to(self.fits_dict.fit_device)]
         else:
             # update fits dict
             update_mask = update_mask > 0
