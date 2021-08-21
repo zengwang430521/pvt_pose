@@ -1299,10 +1299,10 @@ class MeshLoss3(MeshLoss2):
         camera_optimizer = torch.optim.Adam(camera_opt_params, lr=self.step_size, betas=(0.9, 0.999))
 
         for i in range(self.num_iters):
-            # smpl_output = self.smplx(global_orient=global_orient,
-            #                         body_pose=body_pose,
-            #                         betas=betas, return_full_pose=True)
-            # model_joints = self.get_opt_joints(smpl_output)
+            smpl_output = self.smplx(global_orient=global_orient,
+                                    body_pose=body_pose,
+                                    betas=betas, return_full_pose=True)
+            model_joints = self.get_opt_joints(smpl_output)
             #
             # model_joints2 = self.smpl_j(global_orient=global_orient,
             #                         body_pose=body_pose,
@@ -1311,10 +1311,10 @@ class MeshLoss3(MeshLoss2):
             # err = model_joints - model_joints2
             # t = err.abs().max()
 
-            model_joints = self.smpl_j(global_orient=global_orient,
-                                    body_pose=body_pose,
-                                    betas=betas, return_full_pose=True)
-            model_joints = model_joints[:, self.joint_map, :]
+            # model_joints = self.smpl_j(global_orient=global_orient,
+            #                         body_pose=body_pose,
+            #                         betas=betas, return_full_pose=True)
+            # model_joints = model_joints[:, self.joint_map, :]
 
             loss = camera_fitting_loss(model_joints, camera_translation,
                                        init_cam_t, camera_center,
@@ -1339,15 +1339,15 @@ class MeshLoss3(MeshLoss2):
 
         body_optimizer = torch.optim.Adam(body_opt_params, lr=self.step_size, betas=(0.9, 0.999))
         for i in range(self.num_iters):
-            # smpl_output = self.smplx(global_orient=global_orient,
-            #                         body_pose=body_pose,
-            #                         betas=betas, return_full_pose=True)
-            # model_joints = self.get_opt_joints(smpl_output)
-
-            model_joints = self.smpl_j(global_orient=global_orient,
+            smpl_output = self.smplx(global_orient=global_orient,
                                     body_pose=body_pose,
                                     betas=betas, return_full_pose=True)
-            model_joints = model_joints[:, self.joint_map, :]
+            model_joints = self.get_opt_joints(smpl_output)
+
+            # model_joints = self.smpl_j(global_orient=global_orient,
+            #                         body_pose=body_pose,
+            #                         betas=betas, return_full_pose=True)
+            # model_joints = model_joints[:, self.joint_map, :]
 
             loss = body_fitting_loss(body_pose, betas, model_joints, camera_translation, camera_center,
                                      joints_2d, joints_conf, self.pose_prior,
@@ -1358,16 +1358,16 @@ class MeshLoss3(MeshLoss2):
 
         # Get final loss value
         with torch.no_grad():
-            # smpl_output = self.smplx(global_orient=global_orient,
-            #                         body_pose=body_pose,
-            #                         betas=betas, return_full_pose=True)
-            # vertices = smpl_output.vertices
-            # model_joints = self.get_opt_joints(smpl_output)
-
-            model_joints = self.smpl_j(global_orient=global_orient,
+            smpl_output = self.smplx(global_orient=global_orient,
                                     body_pose=body_pose,
                                     betas=betas, return_full_pose=True)
-            model_joints = model_joints[:, self.joint_map, :]
+            vertices = smpl_output.vertices
+            model_joints = self.get_opt_joints(smpl_output)
+
+            # model_joints = self.smpl_j(global_orient=global_orient,
+            #                         body_pose=body_pose,
+            #                         betas=betas, return_full_pose=True)
+            # model_joints = model_joints[:, self.joint_map, :]
 
             reprojection_loss = body_fitting_loss(body_pose, betas, model_joints, camera_translation, camera_center,
                                                   joints_2d, joints_conf, self.pose_prior,
