@@ -29,7 +29,7 @@ from utils.vis import visualize_vert
 from models.my_pvt9 import mypvt9_small
 from models.my_pvt14_3 import mypvt14_3_small
 from models.my_pvt20 import mypvt20_small
-from models.my_pvt20_2 import mypvt20_2_small, mypvt20_2b_small
+from models.my_pvt20_2 import mypvt20_2_small, mypvt20_2b_small, mypvt20_2c_small
 from models.my_pvt20_3 import mypvt20_3_small, mypvt20_3a_small
 from models.my_pvt20_4 import (
     mypvt20_4_small, mypvt20_4b_small, mypvt20_4c_small, mypvt20_4d_small,
@@ -76,6 +76,7 @@ model_dict = {
     'mypvt20_small': mypvt20_small,
     'mypvt20_2_small': mypvt20_2_small,
     'mypvt20_2b_small': mypvt20_2b_small,
+    'mypvt20_2c_small': mypvt20_2c_small,
     'mypvt20_3_small': mypvt20_3_small,
     'mypvt20_3a_small': mypvt20_3a_small,
     'mypvt20_4_small': mypvt20_4_small,
