@@ -185,12 +185,32 @@ spring.submit arun -p spring_scheduler -n1 --gpu \
 
 
 
+srun -p 3dv-share\
+    --ntasks 1 --job-name=spin \
+    --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=4 --kill-on-bad-exit=1 \
+     python -u main.py --dataset=h36m \
+     --batch_size=64 --num_workers=4 --model=hmr --opt=adamw \
+     --name=debug --run_smplify --iter_smplify=0 \
+     --pretrain_from=logs/hmr_all/checkpoints/checkpoint_latest.pth --use_mc --eval\
+     --resume_from=logs/hmr_opt_f/checkpoints/checkpoint_latest.pth
 
 
-export MASTER_PORT=29504
+export MASTER_PORT=29505
 srun -p 3dv-share -w SH-IDC1-10-198-6-130 \
     --ntasks 1 --job-name=spin \
     --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=4 --kill-on-bad-exit=1 \
+     python -u main.py --dataset=h36m \
+     --batch_size=64 --num_workers=4 --model=hmr --opt=adamw \
+     --name=debug --run_smplify --iter_smplify=0 \
+     --pretrain_from=logs/hmr_all/checkpoints/checkpoint_latest.pth --use_mc --eval --val_dataset=3dpw\
+     --resume_from=logs/hmr_opt_f2/checkpoints/checkpoint_latest.pth \
+
+
+    python -u main.py --dataset=all --batch_size=64 --num_workers=4 --num_epochs=100 --summary_steps=100 \
+    --name=my20_2c_all_f --model=mypvt20_2c_small --opt=adamw --lr=2.5e-4 --wd=1e-4 --lr_drop=90 \
+    --resume_from=logs/my20_2c_all_f/checkpoints/checkpoint_latest.pth     --img_res=224 \
+    --pretrain_from=logs/my20_2f_all2/checkpoints/checkpoint0099.pth --use_mc --eval
+
       python -u main.py --dataset=spin \
      --batch_size=64 --num_workers=4 --num_epochs=100 --summary_steps=100 \
      --model=hmr --opt=adamw --lr=3e-5 --wd=1e-4 --lr_drop=90 \
@@ -238,6 +258,7 @@ srun -p pat_earth \
     -x SH-IDC1-10-198-4-[100-103,116-119] \
     --ntasks 8 --job-name=mesh \
     --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=4 --kill-on-bad-exit=1 \
+
     python -u main.py --dataset=all --batch_size=24 --num_workers=4 --num_epochs=100 --summary_steps=100 \
     --name=my20_7_all_f --model=mypvt20_7_small --opt=adamw --lr=2.5e-4 --wd=1e-4 --lr_drop=90 \
     --resume_from=logs/my20_7_all_f/checkpoints/checkpoint_latest.pth     --img_res=224 \

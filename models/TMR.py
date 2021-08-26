@@ -25,7 +25,6 @@ def build_model(options):
                 head_type=getattr(options, 'head_type', 'hmr')
             )
 
-
     else:
         model = model_class(options)
     return model
