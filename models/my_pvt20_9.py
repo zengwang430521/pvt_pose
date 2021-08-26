@@ -16,17 +16,38 @@ vis = False
 predicting offset from grid tokens
 '''
 
+
 def token2critcal(x, loc, loc_critical, return_mask=False):
     B, N, C = x.shape
     k = loc_critical.shape[1]
     dists = square_distance(loc, loc_critical)
-    idx = dists.argmin(dim=-1)
 
-    idx = idx + torch.arange(B)[:, None].to(loc.device) * k
+    dists, idx = dists.sort(dim=-1)
+    dists, idx = dists[:, :, :3], idx[:, :, :3]     # [B, N, 3]
+
+    dist_recip = 1.0 / (dists + 1e-6)
+    one_mask = dists == 0
+    zero_mask = one_mask.sum(dim=-1) > 0
+    dist_recip[zero_mask, :] = 0
+    dist_recip[one_mask] = 1
+    norm = torch.sum(dist_recip, dim=2, keepdim=True)
+    weight = dist_recip / norm
+
+    idx = idx + torch.arange(B)[:, None, None].to(loc.device) * k
     out = x.new_zeros(B * k, C + 1)
+    for i in range(3):
+        out.index_add_(dim=0, index=idx[:, :, i].reshape(B * N),
+                       source=(torch.cat([x, x.new_ones(B, N, 1)], dim=-1) * weight[:, :, [i]]).reshape(B * N, C + 1))
 
-    out.index_add_(dim=0, index=idx.reshape(B * N),
-                   source=torch.cat([x, x.new_ones(B, N, 1)], dim=-1).reshape(B * N, C + 1))
+    # idx = dists.argmin(dim=-1)
+    #
+    # idx = idx + torch.arange(B)[:, None].to(loc.device) * k
+    # out = x.new_zeros(B * k, C + 1)
+    #
+    # out.index_add_(dim=0, index=idx.reshape(B * N),
+    #                source=torch.cat([x, x.new_ones(B, N, 1)], dim=-1).reshape(B * N, C + 1))
+    #
+
     out = out.reshape(B, k, C + 1)
     feature = out[:, :, :C]
     mask = out[:, :, C:]
@@ -93,7 +114,6 @@ def inter_points(x_src, loc_src, loc_tar):
 
     x_tar = torch.sum(index_points(x_src, idx) * weight.view(B, N, 3, 1), dim=2)
     return x_tar
-
 
 
 def get_grid_loc(B, H, W, device):
