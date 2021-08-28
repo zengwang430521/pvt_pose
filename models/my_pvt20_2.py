@@ -944,7 +944,6 @@ class MyPVTc(MyPVT):
         return x.mean(dim=1)
 
 
-
 @register_model
 def mypvt20_2c_small(pretrained=False, **kwargs):
     model = MyPVTc(
@@ -954,6 +953,62 @@ def mypvt20_2c_small(pretrained=False, **kwargs):
 
     return model
 
+
+'''no SR'''
+class MyPVTd(MyPVT):
+    def forward_features(self, x):
+        if vis:
+            outs = []
+            img = x
+        # stage 1
+        x, H, W = self.patch_embed1(x)
+        for i, blk in enumerate(self.block1):
+            x = blk(x, H, W)
+        x = self.norm1(x)
+        # x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
+        x, loc, N_grid = get_loc(x, H, W, self.grid_stride)
+        N_grid = 0
+        if vis: outs.append((x, loc, [H, W]))
+
+        # stage 2
+        x, loc = self.down_layers1(x, loc, H, W, N_grid)     # down sample
+        H, W = H // 2, W // 2
+        for blk in self.block2:
+            x = blk(x, x, loc, loc, H, W)
+        x = self.norm2(x)
+        if vis: outs.append((x, loc, [H, W]))
+
+        # stage 3
+        x, loc = self.down_layers2(x, loc, H, W, N_grid)     # down sample
+        H, W = H // 2, W // 2
+        for blk in self.block3:
+            x = blk(x, x, loc, loc, H, W)
+        x = self.norm3(x)
+        if vis: outs.append((x, loc, [H, W]))
+
+        # stage 4
+        x, loc = self.down_layers3(x, loc, H, W, N_grid)     # down sample
+        H, W = H // 2, W // 2
+        for blk in self.block4:
+            x = blk(x, x, loc, loc, H, W)
+        x = self.norm4(x)
+        if vis:
+            outs.append((x, loc, [H, W]))
+            show_tokens(img, outs, N_grid)
+
+        if self.head_type == 'tcmr':
+            return x
+        return x.mean(dim=1)
+
+
+@register_model
+def mypvt20_2d_small(pretrained=False, **kwargs):
+    model = MyPVTd(
+        patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 1, 1, 1], **kwargs)
+    model.default_cfg = _cfg()
+
+    return model
 
 # For test
 if __name__ == '__main__':
