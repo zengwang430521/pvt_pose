@@ -39,6 +39,7 @@ def token2critcal(x, loc, loc_critical, return_mask=False):
     return feature
 
 
+
 def square_distance(src, dst):
     """
     Calculate Euclid distance between each two points.
