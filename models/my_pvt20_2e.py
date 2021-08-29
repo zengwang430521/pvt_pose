@@ -468,15 +468,21 @@ class MyAttention(nn.Module):
         B, N, C = x.shape
         q = self.q(x).reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
 
-        h, w = H // self.sr_ratio, W // self.sr_ratio
-        x_source = token2map(x_source, loc_source, [h, w], 1, 1)
+        if self.sr_ratio > 1:
+            h, w = H // self.sr_ratio, W // self.sr_ratio
+            x_source = token2map(x_source, loc_source, [h, w], 1, 1)
+            if conf_source is not None:
+                conf_source = token2map(conf_source, loc_source, [h, w], 1, 1)
+                conf_source = conf_source.reshape(B, 1, -1).permute(0, 2, 1)
+        else:
+            x_source = x_source.unsqueeze(2).permute(0, 3, 1, 2)
+
         x_source = self.sr(x_source)
         x_source = x_source.reshape(B, C, -1).permute(0, 2, 1)
         x_source = self.norm(x_source)
         x_source = self.act(x_source)
-        if conf_source is not None:
-            conf_source = token2map(conf_source, loc_source, [h, w], 1, 1)
-            conf_source = conf_source.reshape(B, 1, -1).permute(0, 2, 1)
+
+
 
         _, Ns, _ = x_source.shape
         kv = self.kv(x_source).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
@@ -871,92 +877,7 @@ class MyPVT(nn.Module):
 
 
 @register_model
-def mypvt20_2_small(pretrained=False, **kwargs):
-    model = MyPVT(
-        patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1], **kwargs)
-    model.default_cfg = _cfg()
-
-    return model
-
-
-class MyPVTb(MyPVT):
-    def forward(self, x):
-        x = F.avg_pool2d(x, kernel_size=2)
-        x = self.forward_features(x)
-        x = self.head(x)
-        return x
-
-
-@register_model
-def mypvt20_2b_small(pretrained=False, **kwargs):
-    model = MyPVTb(
-        patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1], **kwargs)
-    model.default_cfg = _cfg()
-
-    return model
-
-'''no grid '''
-class MyPVTc(MyPVT):
-    def forward_features(self, x):
-        if vis:
-            outs = []
-            img = x
-        # stage 1
-        x, H, W = self.patch_embed1(x)
-        for i, blk in enumerate(self.block1):
-            x = blk(x, H, W)
-        x = self.norm1(x)
-        # x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
-        x, loc, N_grid = get_loc(x, H, W, self.grid_stride)
-        N_grid = 0
-        if vis: outs.append((x, loc, [H, W]))
-
-        # stage 2
-        x, loc = self.down_layers1(x, loc, H, W, N_grid)     # down sample
-        H, W = H // 2, W // 2
-        for blk in self.block2:
-            x = blk(x, x, loc, loc, H, W)
-        x = self.norm2(x)
-        if vis: outs.append((x, loc, [H, W]))
-
-        # stage 3
-        x, loc = self.down_layers2(x, loc, H, W, N_grid)     # down sample
-        H, W = H // 2, W // 2
-        for blk in self.block3:
-            x = blk(x, x, loc, loc, H, W)
-        x = self.norm3(x)
-        if vis: outs.append((x, loc, [H, W]))
-
-        # stage 4
-        x, loc = self.down_layers3(x, loc, H, W, N_grid)     # down sample
-        H, W = H // 2, W // 2
-        for blk in self.block4:
-            x = blk(x, x, loc, loc, H, W)
-        x = self.norm4(x)
-        if vis:
-            outs.append((x, loc, [H, W]))
-            show_tokens(img, outs, N_grid)
-
-        if self.head_type == 'tcmr':
-            return x
-        return x.mean(dim=1)
-
-
-@register_model
-def mypvt20_2c_small(pretrained=False, **kwargs):
-    model = MyPVTc(
-        patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1], **kwargs)
-    model.default_cfg = _cfg()
-
-    return model
-
-
-'''no SR'''
-@register_model
-def mypvt20_2d_small(pretrained=False, **kwargs):
+def mypvt20_2e_small(pretrained=False, **kwargs):
     model = MyPVT(
         patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
         norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 1, 1, 1], **kwargs)
@@ -964,10 +885,11 @@ def mypvt20_2d_small(pretrained=False, **kwargs):
 
     return model
 
+
 # For test
 if __name__ == '__main__':
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    model = mypvt20_2d_small(drop_path_rate=0.1).to(device)
+    model = mypvt20_2e_small(drop_path_rate=0.1).to(device)
     model.reset_drop_path(0.1)
 
     empty_input = torch.rand([2, 3, 112, 112], device=device)
