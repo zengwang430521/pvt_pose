@@ -22,7 +22,9 @@ def create_dataset(dataset, options, **kwargs):
         'mesh': (['h36m-train', 'up-3d'],
                  [.7, .3]),
         'spin': (['h36m-train', 'lsp-orig', 'mpii', 'lspet', 'coco', 'mpi-inf-3dhp'],
-                 [.3, .1, .15, .15, .2, .1])
+                 [.3, .1, .15, .15, .2, .1]),
+        'eft': (['h36m-train', 'lsp-orig', 'mpii-eft', 'lspet-eft', 'coco-eft', 'mpi-inf-3dhp'],
+                 [.3, .1, .15, .15, .2, .1]),
     }
     if dataset in dataset_setting:
         datasets, partition = dataset_setting[dataset]
