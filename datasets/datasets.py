@@ -25,6 +25,8 @@ def create_dataset(dataset, options, **kwargs):
                  [.3, .1, .15, .15, .2, .1]),
         'eft': (['h36m-train', 'lsp-orig', 'mpii-eft', 'lspet-eft', 'coco-eft', 'mpi-inf-3dhp'],
                  [.3, .1, .15, .15, .2, .1]),
+        'eft-all': (['h36m-train', 'lsp-orig', 'mpii-eft', 'lspet-eft', 'coco-eft-all', 'mpi-inf-3dhp', 'up-3d'],
+                [.3, .1, .1, .1, .2, .1,  .1]),
     }
     if dataset in dataset_setting:
         datasets, partition = dataset_setting[dataset]
