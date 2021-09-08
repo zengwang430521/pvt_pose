@@ -61,10 +61,18 @@ class BaseDataset(Dataset):
         try:
             self.pose = self.data['pose'].astype(np.float)
             self.betas = self.data['shape'].astype(np.float)
-            self.has_smpl = np.ones(len(self.imgname)).astype(np.int)
-            if dataset == 'mpi-inf-3dhp':
+
+            if 'h36m' in dataset or 'up-3d' in dataset:
+                self.has_smpl = np.ones(len(self.imgname)).astype(np.int)
+            elif dataset == 'mpi-inf-3dhp':
                 self.has_smpl = self.data['has_smpl'].astype(np.int)
                 t = self.has_smpl.mean()
+            elif 'eft' in dataset:
+                self.has_smpl = self.data['has_smpl'].astype(np.int)
+            else:
+                self.has_smpl = self.data['has_smpl'].astype(np.int)
+
+
         except KeyError:
             self.has_smpl = np.zeros(len(self.imgname)).astype(np.int)
 
