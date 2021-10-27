@@ -20,115 +20,121 @@ from tqdm import tqdm
 import numpy as np
 import utils.config as cfg
 from models.transformer_net import TNet
-from models.pvt import pvt_tiny, pvt_small, pvt_medium, pvt_large, pvt2048_small
-from models.my_pvt import mypvt2_small
-from models.pvt_nc import pvt_nc_tiny, pvt_nc_small, pvt_nc_medium, pvt_nc_large, pvt_nc2_small
-from models.pvt_impr1 import pvt_small_impr1_peg
+# from models.pvt import pvt_tiny, pvt_small, pvt_medium, pvt_large, pvt2048_small
+# from models.my_pvt import mypvt2_small
+# from models.pvt_nc import pvt_nc_tiny, pvt_nc_small, pvt_nc_medium, pvt_nc_large, pvt_nc2_small
+# from models.pvt_impr1 import pvt_small_impr1_peg
 from models.hmr import HMR
 from utils.vis import visualize_vert
-from models.my_pvt9 import mypvt9_small
-from models.my_pvt14_3 import mypvt14_3_small
-from models.my_pvt20 import mypvt20_small
-from models.my_pvt20_2 import mypvt20_2_small, mypvt20_2b_small, mypvt20_2c_small, mypvt20_2d_small
-from models.my_pvt20_2a import mypvt20_2a_small
-from models.my_pvt20_2e import mypvt20_2e_small
-from models.my_pvt20_3 import mypvt20_3_small, mypvt20_3a_small
-from models.my_pvt20_4 import (
-    mypvt20_4_small, mypvt20_4b_small, mypvt20_4c_small, mypvt20_4d_small,
-    mypvt20_4e_small, mypvt20_4d2_small, mypvt20_4d3_small, mypvt20_4f_small
-)
-from models.my_pvt20_5 import mypvt20_5_small
-from models.my_pvt20_6 import mypvt20_6_small
-from models.my_pvt20_7 import mypvt20_7_small
-from models.my_pvt20_7a import mypvt20_7a_small
-from models.my_pvt20_8 import mypvt20_8_small
-from models.my_pvt20_8a import mypvt20_8a_small
-from models.my_pvt20_9 import mypvt20_9_small
-from models.my_pvt20_9a import mypvt20_9a_small
+# from models.my_pvt9 import mypvt9_small
+# from models.my_pvt14_3 import mypvt14_3_small
+# from models.my_pvt20 import mypvt20_small
+# from models.my_pvt20_2 import mypvt20_2_small, mypvt20_2b_small, mypvt20_2c_small, mypvt20_2d_small
+# from models.my_pvt20_2a import mypvt20_2a_small
+# from models.my_pvt20_2e import mypvt20_2e_small
+# from models.my_pvt20_3 import mypvt20_3_small, mypvt20_3a_small
+# from models.my_pvt20_4 import (
+#     mypvt20_4_small, mypvt20_4b_small, mypvt20_4c_small, mypvt20_4d_small,
+#     mypvt20_4e_small, mypvt20_4d2_small, mypvt20_4d3_small, mypvt20_4f_small
+# )
+# from models.my_pvt20_5 import mypvt20_5_small
+# from models.my_pvt20_6 import mypvt20_6_small
+# from models.my_pvt20_7 import mypvt20_7_small
+# from models.my_pvt20_7a import mypvt20_7a_small
+# from models.my_pvt20_8 import mypvt20_8_small
+# from models.my_pvt20_8a import mypvt20_8a_small
+# from models.my_pvt20_9 import mypvt20_9_small
+# from models.my_pvt20_9a import mypvt20_9a_small
+#
+#
+# from models.my_pvt21 import mypvt21_small
+# from models.my_pvt22 import mypvt22_small
+# from models.my_pvt25c import mypvt2520_small, mypvt2520_2_small
+# from models.my_pvt2520_3 import mypvt2520_3_small
+# from models.my_pvt2520_4 import mypvt2520_4_small
+# from models.my_pvt2520_5 import mypvt2520_5_small
+# from models.my_pvt2520_7 import mypvt2520_7_small
+# from models.my_pvt2520_8 import mypvt2520_8_small
+# from models.my_pvt2520_9 import mypvt2520_9_small
+# from models.my_pvt2520_10 import mypvt2520_10_small
+# from models.my_pvt2520_10_2 import mypvt2520_10_2_small
+# from models.my_pvt2520_11 import mypvt2520_11_small
+# from models.my_pvt25g import mypvt2520g_small, mypvt25g_small
+# from models.my_pvt23 import mypvt2320_small
 
+# from models.pvt_impr8 import pvt_small_impr8_peg
 
-from models.my_pvt21 import mypvt21_small
-from models.my_pvt22 import mypvt22_small
-from models.my_pvt25c import mypvt2520_small, mypvt2520_2_small
-from models.my_pvt2520_3 import mypvt2520_3_small
-from models.my_pvt2520_4 import mypvt2520_4_small
-from models.my_pvt2520_5 import mypvt2520_5_small
-from models.my_pvt2520_7 import mypvt2520_7_small
-from models.my_pvt2520_8 import mypvt2520_8_small
-from models.my_pvt2520_9 import mypvt2520_9_small
-from models.my_pvt2520_10 import mypvt2520_10_small
-from models.my_pvt2520_10_2 import mypvt2520_10_2_small
-from models.my_pvt2520_11 import mypvt2520_11_small
-from models.my_pvt25g import mypvt2520g_small, mypvt25g_small
-from models.my_pvt23 import mypvt2320_small
+from models.pvt_v2 import pvt_v2_b2
+from models.pvt_v2_3h2_density import mypvt3h2_density0_small, mypvt3h2_densityc_small
 
-
-from models.pvt_impr8 import pvt_small_impr8_peg
 
 
 model_dict = {
     'TMR': TNet,
     'hmr': HMR,
-    'pvt_tiny': pvt_tiny,
-    'pvt_small': pvt_small,
-    'pvt_medium': pvt_medium,
-    'pvt_large': pvt_large,
-    'pvt_nc_tiny': pvt_nc_tiny,
-    'pvt_nc_small': pvt_nc_small,
-    'pvt_nc2_small': pvt_nc2_small,
-    'pvt_nc_medium': pvt_nc_medium,
-    'pvt_nc_large': pvt_nc_large,
-    'pvt2048_small': pvt2048_small,
+    # 'pvt_tiny': pvt_tiny,
+    # 'pvt_small': pvt_small,
+    # 'pvt_medium': pvt_medium,
+    # 'pvt_large': pvt_large,
+    # 'pvt_nc_tiny': pvt_nc_tiny,
+    # 'pvt_nc_small': pvt_nc_small,
+    # 'pvt_nc2_small': pvt_nc2_small,
+    # 'pvt_nc_medium': pvt_nc_medium,
+    # 'pvt_nc_large': pvt_nc_large,
+    # 'pvt2048_small': pvt2048_small,
 
-    'mypvt2_small': mypvt2_small,
-    'mypvt9_small': mypvt9_small,
-    'mypvt20_small': mypvt20_small,
-    'mypvt20_2_small': mypvt20_2_small,
-    'mypvt20_2a_small': mypvt20_2a_small,
-    'mypvt20_2b_small': mypvt20_2b_small,
-    'mypvt20_2c_small': mypvt20_2c_small,
-    'mypvt20_2d_small': mypvt20_2d_small,
-    'mypvt20_2e_small': mypvt20_2e_small,
-    'mypvt20_3_small': mypvt20_3_small,
-    'mypvt20_3a_small': mypvt20_3a_small,
-    'mypvt20_4_small': mypvt20_4_small,
-    'mypvt20_4b_small': mypvt20_4b_small,
-    'mypvt20_4c_small': mypvt20_4c_small,
-    'mypvt20_4d_small': mypvt20_4d_small,
-    'mypvt20_4d2_small': mypvt20_4d2_small,
-    'mypvt20_4d3_small': mypvt20_4d3_small,
-    'mypvt20_4e_small': mypvt20_4e_small,
-    'mypvt20_4f_small': mypvt20_4f_small,
-    'mypvt20_5_small': mypvt20_5_small,
-    'mypvt20_6_small': mypvt20_6_small,
-    'mypvt20_7_small': mypvt20_7_small,
-    'mypvt20_7a_small': mypvt20_7a_small,
-    'mypvt20_8_small': mypvt20_8_small,
-    'mypvt20_8a_small': mypvt20_8a_small,
-    'mypvt20_9_small': mypvt20_9_small,
-    'mypvt20_9a_small': mypvt20_9a_small,
-    # 'mypvt20c_small': mypvt20c_small,
-    'mypvt21_small': mypvt21_small,
-    'mypvt22_small': mypvt22_small,
-    'mypvt2320_small': mypvt2320_small,
-    'mypvt2520_small': mypvt2520_small,
-    'mypvt2520_2_small': mypvt2520_2_small,
-    'mypvt2520_4_small': mypvt2520_4_small,
-    'mypvt2520_5_small': mypvt2520_5_small,
-    'mypvt2520_7_small': mypvt2520_7_small,
-    'mypvt2520_8_small': mypvt2520_8_small,
-    'mypvt2520_9_small': mypvt2520_9_small,
-    'mypvt2520_10_small': mypvt2520_10_small,
-    'mypvt2520_10_2_small': mypvt2520_10_2_small,
-    'mypvt2520_11_small': mypvt2520_11_small,
+    # 'mypvt2_small': mypvt2_small,
+    # 'mypvt9_small': mypvt9_small,
+    # 'mypvt20_small': mypvt20_small,
+    # 'mypvt20_2_small': mypvt20_2_small,
+    # 'mypvt20_2a_small': mypvt20_2a_small,
+    # 'mypvt20_2b_small': mypvt20_2b_small,
+    # 'mypvt20_2c_small': mypvt20_2c_small,
+    # 'mypvt20_2d_small': mypvt20_2d_small,
+    # 'mypvt20_2e_small': mypvt20_2e_small,
+    # 'mypvt20_3_small': mypvt20_3_small,
+    # 'mypvt20_3a_small': mypvt20_3a_small,
+    # 'mypvt20_4_small': mypvt20_4_small,
+    # 'mypvt20_4b_small': mypvt20_4b_small,
+    # 'mypvt20_4c_small': mypvt20_4c_small,
+    # 'mypvt20_4d_small': mypvt20_4d_small,
+    # 'mypvt20_4d2_small': mypvt20_4d2_small,
+    # 'mypvt20_4d3_small': mypvt20_4d3_small,
+    # 'mypvt20_4e_small': mypvt20_4e_small,
+    # 'mypvt20_4f_small': mypvt20_4f_small,
+    # 'mypvt20_5_small': mypvt20_5_small,
+    # 'mypvt20_6_small': mypvt20_6_small,
+    # 'mypvt20_7_small': mypvt20_7_small,
+    # 'mypvt20_7a_small': mypvt20_7a_small,
+    # 'mypvt20_8_small': mypvt20_8_small,
+    # 'mypvt20_8a_small': mypvt20_8a_small,
+    # 'mypvt20_9_small': mypvt20_9_small,
+    # 'mypvt20_9a_small': mypvt20_9a_small,
+    # # 'mypvt20c_small': mypvt20c_small,
+    # 'mypvt21_small': mypvt21_small,
+    # 'mypvt22_small': mypvt22_small,
+    # 'mypvt2320_small': mypvt2320_small,
+    # 'mypvt2520_small': mypvt2520_small,
+    # 'mypvt2520_2_small': mypvt2520_2_small,
+    # 'mypvt2520_4_small': mypvt2520_4_small,
+    # 'mypvt2520_5_small': mypvt2520_5_small,
+    # 'mypvt2520_7_small': mypvt2520_7_small,
+    # 'mypvt2520_8_small': mypvt2520_8_small,
+    # 'mypvt2520_9_small': mypvt2520_9_small,
+    # 'mypvt2520_10_small': mypvt2520_10_small,
+    # 'mypvt2520_10_2_small': mypvt2520_10_2_small,
+    # 'mypvt2520_11_small': mypvt2520_11_small,
+    #
+    # 'mypvt2520g_small': mypvt2520g_small,
+    # 'mypvt25g_small': mypvt25g_small,
+    #
+    # 'mypvt14_3_small': mypvt14_3_small,
 
-    'mypvt2520g_small': mypvt2520g_small,
-    'mypvt25g_small': mypvt25g_small,
-
-    'mypvt14_3_small': mypvt14_3_small,
-    'pvt_small_impr1_peg': pvt_small_impr1_peg,
-    'pvt_small_impr8_peg': pvt_small_impr8_peg,
-
+    # 'pvt_small_impr1_peg': pvt_small_impr1_peg,
+    # 'pvt_small_impr8_peg': pvt_small_impr8_peg,
+    'pvt_v2_b2': pvt_v2_b2,
+    'mypvt3h2_density0_small': mypvt3h2_density0_small,
+    'mypvt3h2_densityc_small': mypvt3h2_densityc_small
 }
 
 
