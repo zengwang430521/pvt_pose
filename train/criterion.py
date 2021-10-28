@@ -1709,7 +1709,7 @@ class JointEvaluator(nn.Module):
         pred_vertices = self.apply_smpl(pred_pose, pred_shape)
         pred_joints_3d = self.smpl.get_train_joints(pred_vertices)[:, self.joint_mapper]
 
-        if self.options.val_dataset == '3dpw':
+        if '3dpw' in self.options.val_dataset :
             gt_pose = input_batch['pose'].to(self.device)
             gt_betas = input_batch['betas'].to(self.device)
             gender = input_batch['gender'].to(self.device)
