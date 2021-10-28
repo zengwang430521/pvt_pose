@@ -52,6 +52,7 @@ DATASET_FILES = [ {'h36m-p1': join(DATASET_NPZ_PATH, 'h36m_valid_protocol1.npz')
                    'lspet-eft': join(DATASET_NPZ_PATH, 'hr-lspet_train_eft.npz'),
                    'mpi-inf-3dhp': join(DATASET_NPZ_PATH, 'mpi_inf_3dhp_train.npz'),
                    'surreal': join(DATASET_NPZ_PATH, 'surreal_train.npz'),
+                   '3dpw': join(DATASET_NPZ_PATH, '3dpw_train.npz'),
                    }
                 ]
 
