@@ -505,63 +505,6 @@ class TCMRHead(nn.Module):
 
 
 
-class AttNeck(nn.Module):
-
-    def __init__(self,
-                 in_channels=[64, 128, 320, 512],
-                 query_channels=512,
-                 out_channels=512,
-                 qkv_bias=True,
-                 num_heads=[1, 2, 5, 8],
-                 ):
-        super().__init__()
-        self.qs = nn.ModuleList()
-        self.kvs = nn.ModuleList()
-        self.linears = nn.ModuleList()
-        self.num_heads = num_heads
-        self.query_channels = query_channels
-
-        for in_channel in in_channels:
-            self.qs.append(nn.Linear(query_channels, in_channel, bias=qkv_bias))
-            self.kvs.append(nn.Linear(in_channel, in_channel * 2, bias=qkv_bias))
-            self.linears.append(nn.Linear(in_channel, out_channels))
-        self._init_weights()
-
-    def _init_weights(self, m):
-        if isinstance(m, nn.Linear):
-            trunc_normal_(m.weight, std=.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
-                nn.init.constant_(m.bias, 0)
-        elif isinstance(m, nn.LayerNorm):
-            nn.init.constant_(m.bias, 0)
-            nn.init.constant_(m.weight, 1.0)
-        elif isinstance(m, nn.Conv2d):
-            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-            fan_out //= m.groups
-            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
-            if m.bias is not None:
-                m.bias.data.zero_()
-
-    def forward(self, x_list):
-        if isinstance(x_list[0], list) or isinstance(x_list[0], tuple):
-            x_list = [tmp[0] for tmp in x_list]
-        query = x_list[-1].mean(dim=1, keepdim=True)
-        out = query
-        for i in range(len(self.num_heads)-1, -1, -1):
-            x = x_list[i]
-            B, N, C = x.shape
-            num_head = self.num_heads[i]
-            q = self.qs[i](query).reshape(B, N, num_head, C // num_head).permute(0, 2, 1, 3)
-            kv = self.kvs[i](x).reshape(B, -1, 2, num_head, C // self.num_heads).permute(2, 0, 3, 1, 4)
-            k, v = kv[0], kv[1]
-
-            attn = (q @ k.transpose(-2, -1)) * self.scale
-            attn = attn.softmax(dim=-1)
-            x = (attn @ v).transpose(1, 2).reshape(B, N, C)
-            x = self.linears[i](x)
-            out = out + x
-        return out
-
 # hierarchical
 class HirAttNeck(nn.Module):
 
@@ -621,6 +564,31 @@ class HirAttNeck(nn.Module):
             x = self.linears[i](x)
             out = out + x
             query = out
+        return out.squeeze(1)
+
+
+class AttNeck(HirAttNeck):
+    def forward(self, x_list):
+        if isinstance(x_list[0], list) or isinstance(x_list[0], tuple):
+            x_list = [tmp[0] for tmp in x_list]
+        query = x_list[-1].mean(dim=1, keepdim=True)
+        out = query
+        for i in range(len(self.num_heads)-1, -1, -1):
+            x = x_list[i]
+            B, N, C = x.shape
+            num_head = self.num_heads[i]
+            q = self.qs[i](query).reshape(B, 1, num_head, C // num_head).permute(0, 2, 1, 3)
+            kv = self.kvs[i](x).reshape(B, -1, 2, num_head, C // num_head).permute(2, 0, 3, 1, 4)
+            k, v = kv[0], kv[1]
+
+            head_dim = C // num_head
+            scale = head_dim ** -0.5
+            attn = (q @ k.transpose(-2, -1)) * scale
+            attn = attn.softmax(dim=-1)
+            x = (attn @ v).transpose(1, 2).reshape(B, 1, C)
+            x = self.linears[i](x)
+            out = out + x
+            # query = out
         return out.squeeze(1)
 
 
