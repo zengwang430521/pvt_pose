@@ -210,10 +210,10 @@ def evaluate(model, evaluator, dataloader, device):
             metric_logger.meters['MPJPE_PA_spin'].update(error_pa_spin.mean().item(), n=batch_size)
 
     metric_logger.synchronize_between_processes()
-    stats = dict(MPJPE=metric_logger.MPJPE,
-                 MPJPE_PA=metric_logger.MPJPE_PA,
-                 MPJPE_spin=metric_logger.MPJPE_spin,
-                 MPJPE_PA_spin=metric_logger.MPJPE_PA_spin,
+    stats = dict(MPJPE=float(metric_logger.MPJPE),
+                 MPJPE_PA=float(metric_logger.MPJPE_PA),
+                 MPJPE_spin=float(metric_logger.MPJPE_spin),
+                 MPJPE_PA_spin=float(metric_logger.MPJPE_PA_spin),
                  )
 
     # stats = dict(MPJPE=float(np.concatenate(mpjpe, axis=0).mean()),
