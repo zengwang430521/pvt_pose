@@ -11,6 +11,8 @@ import math
 
 
 def create_dataset(dataset, options, **kwargs):
+    len2d_eft=[1000, 14810, 9428, 28344]
+
     dataset_setting = {
         'all': (['h36m-train', 'lsp-orig', 'coco', 'mpii', 'up-3d'],
                 [.3, .1, .2, .2, .2]),
@@ -29,8 +31,12 @@ def create_dataset(dataset, options, **kwargs):
                 [.3, .1, .1, .1, .2, .1,  .1]),
         'dsr': (['h36m-train', 'coco-eft', 'mpi-inf-3dhp', '3dpw-train'],
                  [.3, .4, .1, .2]),
-
+        'mix1':(['h36m-train', 'mpi-inf-3dhp', '3dpw-train', 'lsp-orig', 'mpii-eft', 'lspet-eft', 'coco-eft'],
+                 [.3, .1, .2] + [0.4* l / sum(len2d_eft) for l in len2d_eft]),
+        'mix2': (['h36m-train', 'mpi-inf-3dhp', 'lsp-orig', 'mpii-eft', 'lspet-eft', 'coco-eft'],
+                 [.3, .1] + [0.6 * l / sum(len2d_eft) for l in len2d_eft]),
     }
+
     if dataset in dataset_setting:
         datasets, partition = dataset_setting[dataset]
         return MeshMixDataset(datasets, partition, options, **kwargs)
@@ -53,8 +59,8 @@ class MeshMixDataset(torch.utils.data.Dataset):
         """Load data from multiple datasets."""
         assert min(partition) >= 0
         assert math.isclose(sum(partition), 1, abs_tol=1e-2)
-        # assert sum(partition) == 1
         self.partition = np.array(partition).cumsum()
+
         self.datasets = [BaseDataset(options, ds, **kwargs) for ds in datasets]
         self.length = max(len(ds) for ds in self.datasets)
         self.dataset_infos = []
