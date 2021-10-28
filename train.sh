@@ -21,9 +21,13 @@ srun -p mm_human \
 srun -p spring_scheduler-16gv100 -w SH-IDC1-10-198-6-242\
 srun -p pat_earth -x SH-IDC1-10-198-4-[90-91,100-103,116-119] \
     --ntasks 4 --job-name=mesh --gres=gpu:4 --ntasks-per-node=4 --cpus-per-task=5 --kill-on-bad-exit=1 \
-    python -u main.py --batch_size=32 --num_workers=5 --num_epochs=100 --summary_steps=100 \
+    python -u main.py --batch_size=36 --num_workers=5 --num_epochs=100 --summary_steps=100 \
     --opt=adamw --lr=2.5e-4 --wd=0.01 --lr_drop=90  --img_res=224 --use_mc \
      \
+     --model=mypvt3h2_density0_small --dataset=mix1 --head_type=att_hmr \
+    --name=den0_mix1_att  --pretrain_from=data/pretrained/3h2_density0_small.pth\
+    --val_dataset=3dpw --resume_from=logs/den0_mix1_att/checkpoints/checkpoint_latest.pth
+
     --model=mypvt3h2_density0_small --dataset=mix1 --head_type=hmr \
     --name=den0_mix1 --model=mypvt3h2_density0_small --pretrain_from=data/pretrained/3h2_density0_small.pth\
     --val_dataset=3dpw --resume_from=logs/den0_mix1/checkpoints/checkpoint_latest.pth
@@ -34,9 +38,6 @@ srun -p pat_earth -x SH-IDC1-10-198-4-[90-91,100-103,116-119] \
     --val_dataset=3dpw --resume_from=logs/den0_mix1_hiratt/checkpoints/checkpoint_latest.pth
 
 
-    --model=mypvt3h2_density0_small --dataset=mix1 --head_type=att_hmr \
-    --name=den0_mix1_att  --pretrain_from=data/pretrained/3h2_density0_small.pth\
-    --val_dataset=3dpw --resume_from=logs/den0_mix1_att/checkpoints/checkpoint_latest.pth
 
 
 
