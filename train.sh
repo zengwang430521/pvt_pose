@@ -3,17 +3,17 @@
 
 spring.submit arun -p spring_scheduler --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 \
     -n8 --gpu --job-name=mesh --gpu-type 16gv100 \
-    "python -u main.py --dataset=eft --batch_size=16 --num_workers=5 --num_epochs=100 --summary_steps=100 \
+    "python -u main.py --dataset=dsr --batch_size=32 --num_workers=5 --num_epochs=100 --summary_steps=100 \
     --opt=adamw --lr=2.5e-4 --wd=1e-4 --lr_drop=90  --img_res=224 --use_mc \
     --name=den0_eft_hiratt --model=mypvt3h2_density0_small --pretrain_from=data/pretrained/3h2_density0_small.pth\
-    --head_type=hiratt_hmr  --val_dataset=3dpw --resume_from=logs/den0_eft_hiratt/checkpoints/checkpoint_latest.pth "
+    --head_type=hiratt_hmr  --val_dataset=3dpw --resume_from=logs/den0_eft_hiratt/checkpoints/checkpoint_latest.pth"
 
 
 srun -p 3dv-share -w SH-IDC1-10-198-6-129\
 srun -p mm_human \
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
     --ntasks 8 --job-name=mesh --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=4 --kill-on-bad-exit=1 \
-    python -u main.py --dataset=eft --batch_size=32 --num_workers=5 --num_epochs=100 --summary_steps=100 \
+    python -u main.py --dataset=dsr --batch_size=32 --num_workers=5 --num_epochs=100 --summary_steps=100 \
     --opt=adamw --lr=2.5e-4 --wd=1e-4 --lr_drop=90  --img_res=224 --use_mc \
     --name=den0_eft_hiratt --model=mypvt3h2_density0_small --pretrain_from=data/pretrained/3h2_density0_small.pth\
     --head_type=hiratt_hmr  --val_dataset=3dpw --resume_from=logs/den0_eft_hiratt/checkpoints/checkpoint_latest.pth

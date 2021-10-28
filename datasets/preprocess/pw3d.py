@@ -77,7 +77,7 @@ def pw3d_extract(dataset_path, out_path):
                        gender=genders_)
 
 
-def pw3d_extract_train(dataset_path, out_path):
+def pw3d_extract_train(dataset_path, out_path, split='train'):
     # scale factor
     scaleFactor = 1.2
 
@@ -86,7 +86,7 @@ def pw3d_extract_train(dataset_path, out_path):
     poses_, shapes_, genders_ = [], [], []
 
     # get a list of .pkl files in the directory
-    dataset_path = os.path.join(dataset_path, 'sequenceFiles', 'train')
+    dataset_path = os.path.join(dataset_path, 'sequenceFiles', split)
     files = [os.path.join(dataset_path, f)
              for f in os.listdir(dataset_path) if f.endswith('.pkl')]
     # go through all the .pkl files
@@ -138,7 +138,7 @@ def pw3d_extract_train(dataset_path, out_path):
     # store data
     if not os.path.isdir(out_path):
         os.makedirs(out_path)
-    out_file = os.path.join(out_path, '3dpw_train.npz')
+    out_file = os.path.join(out_path, '3dpw_'+split+'.npz')
     np.savez(out_file, imgname=imgnames_,
              center=centers_,
              scale=scales_,
@@ -149,5 +149,6 @@ def pw3d_extract_train(dataset_path, out_path):
 if __name__ == '__main__':
     pw3d_extract_train(
         '/home/wzeng/mycodes/pvt_pose/data/datasets/3DPW',
-        '/home/wzeng/mycodes/pvt_pose/data/datasets/npz'
+        '/home/wzeng/mycodes/pvt_pose/data/datasets/npz',
+        'validation'
     )

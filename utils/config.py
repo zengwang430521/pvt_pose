@@ -35,6 +35,7 @@ DATASET_FILES = [ {'h36m-p1': join(DATASET_NPZ_PATH, 'h36m_valid_protocol1.npz')
                    'up-3d-test': join(DATASET_NPZ_PATH, 'up_3d_test.npz'),
                    'surreal': join(DATASET_NPZ_PATH, 'surreal_val.npz'),
                    '3dpw': join(DATASET_NPZ_PATH, '3dpw_test.npz'),
+                   '3dpw-val': join(DATASET_NPZ_PATH, '3dpw_validation.npz'),
                    'mpi-inf-3dhp': join(DATASET_NPZ_PATH, 'mpi_inf_3dhp_valid.npz'),
                    'debug': join(DATASET_NPZ_PATH, 'up_3d_trainval.npz'),
 
@@ -52,7 +53,7 @@ DATASET_FILES = [ {'h36m-p1': join(DATASET_NPZ_PATH, 'h36m_valid_protocol1.npz')
                    'lspet-eft': join(DATASET_NPZ_PATH, 'hr-lspet_train_eft.npz'),
                    'mpi-inf-3dhp': join(DATASET_NPZ_PATH, 'mpi_inf_3dhp_train.npz'),
                    'surreal': join(DATASET_NPZ_PATH, 'surreal_train.npz'),
-                   '3dpw': join(DATASET_NPZ_PATH, '3dpw_train.npz'),
+                   '3dpw-train': join(DATASET_NPZ_PATH, '3dpw_train.npz'),
                    }
                 ]
 
@@ -95,6 +96,8 @@ DATASET_FOLDERS = {'h36m-train': H36M_ROOT,
                    'coco-eft-all': COCO_ROOT,
                    'surreal': SURREAL_ROOT,
                    '3dpw': PW3D_ROOT,
+                   '3dpw-val': PW3D_ROOT,
+                   '3dpw-train': PW3D_ROOT,
                    'lspet': LSPET_ROOT,
                    'lspet-eft': LSPET_ROOT,
                    'mpi-inf-3dhp': MPI_INF_3DHP_ROOT,
