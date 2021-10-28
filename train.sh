@@ -9,6 +9,8 @@ srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
     --name=den0_eft --model=mypvt3h2_density0_small --pretrain_from=data/pretrained/3h2_density0_small.pth\
     --resume_from=logs/den0_eft/checkpoints/checkpoint_latest.pth
 
+    --name=den0_eft_hiratt --model=mypvt3h2_density0_small --pretrain_from=data/pretrained/3h2_density0_small.pth\
+    --head_type=hiratt_hmr  --val_dataset=3dpw --resume_from=logs/den0_eft_hiratt/checkpoints/checkpoint_latest.pth
 
 
 

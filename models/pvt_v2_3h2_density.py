@@ -365,7 +365,8 @@ class MyPVT(nn.Module):
         # classification head
         # self.head = nn.Linear(embed_dims[3], num_classes) if num_classes > 0 else nn.Identity()
         self.head_type = kwargs['head_type'] if 'head_type' in kwargs else 'hmr'
-        self.head = build_smpl_head(embed_dims[3], self.head_type)
+        self.head = build_smpl_head(embed_dims, self.head_type)
+        self.return_list = 'att' in self.head_type
 
         self.apply(self._init_weights)
 
@@ -428,8 +429,8 @@ class MyPVT(nn.Module):
 
     def forward_features(self, x):
         if vis:
-            outs = []
             img = x
+        outs = []
 
         # stage 1
         i = 0
@@ -448,7 +449,7 @@ class MyPVT(nn.Module):
         agg_weight = x.new_ones(B, N, 1)
         loc_orig = get_grid_loc(B, H, W, x.device)
 
-        if vis: outs.append((x, None, [H, W], loc_orig, idx_agg, agg_weight))
+        outs.append((x, None, [H, W], loc_orig, idx_agg, agg_weight))
 
         for i in range(1, self.num_stages):
             down_layers = getattr(self, f"down_layers{i}")
@@ -461,12 +462,15 @@ class MyPVT(nn.Module):
                 x = blk(x, idx_agg, agg_weight, loc_orig, x, idx_agg, agg_weight, H, W, conf_source=None)
 
             x = norm(x)
-            if vis: outs.append((x, None, [H, W], loc_orig, idx_agg, agg_weight))
+            outs.append((x, None, [H, W], loc_orig, idx_agg, agg_weight))
 
         if vis:
             show_tokens_merge(img, outs, N_grid)
 
-        return x.mean(dim=1)
+        if self.return_list:
+            return outs
+        else:
+            return x.mean(dim=1)
 
     def forward(self, x):
         x = self.forward_features(x)
