@@ -2,11 +2,7 @@ import torch
 import torch.nn.functional as F
 import math
 import matplotlib.pyplot as plt
-try:
-    from torch_cluster import fps
-    from torch_cluster import nearest
-except:
-    print('No torch cluster')
+from torch_cluster import fps
 
 
 def get_grid_loc(B, H, W, device):
@@ -52,35 +48,35 @@ def get_loc(x, H, W, grid_stride):
 
 
 def get_loc_new(x, H, W, grid_stride):
-        B = x.shape[0]
-        device = x.device
-        y_g, x_g = torch.arange(H, device=device).float(), torch.arange(W, device=device).float()
-        y_g = 2 * ((y_g + 0.5) / H) - 1
-        x_g = 2 * ((x_g + 0.5) / W) - 1
-        y_map, x_map = torch.meshgrid(y_g, x_g)
-        xy_map = torch.stack((x_map, y_map), dim=-1)
+    B = x.shape[0]
+    device = x.device
+    y_g, x_g = torch.arange(H, device=device).float(), torch.arange(W, device=device).float()
+    y_g = 2 * ((y_g + 0.5) / H) - 1
+    x_g = 2 * ((x_g + 0.5) / W) - 1
+    y_map, x_map = torch.meshgrid(y_g, x_g)
+    xy_map = torch.stack((x_map, y_map), dim=-1)
 
-        loc = xy_map.reshape(-1, 2)[None, ...].repeat([B, 1, 1])
+    loc = xy_map.reshape(-1, 2)[None, ...].repeat([B, 1, 1])
 
-        # split into grid and adaptive tokens
-        pos = torch.arange(x.shape[1], dtype=torch.long, device=x.device)
-        tmp = pos.reshape([H, W])
-        # pos_grid = tmp[grid_stride // 2:H:grid_stride, grid_stride // 2:W:grid_stride]
-        pos_grid = tmp[0:H:grid_stride, 0:W:grid_stride]
-        pos_grid = pos_grid.reshape([-1])
-        mask = torch.ones(pos.shape, dtype=torch.bool, device=pos.device)
-        mask[pos_grid] = 0
-        pos_ada = torch.masked_select(pos, mask)
+    # split into grid and adaptive tokens
+    pos = torch.arange(x.shape[1], dtype=torch.long, device=x.device)
+    tmp = pos.reshape([H, W])
+    # pos_grid = tmp[grid_stride // 2:H:grid_stride, grid_stride // 2:W:grid_stride]
+    pos_grid = tmp[0:H:grid_stride, 0:W:grid_stride]
+    pos_grid = pos_grid.reshape([-1])
+    mask = torch.ones(pos.shape, dtype=torch.bool, device=pos.device)
+    mask[pos_grid] = 0
+    pos_ada = torch.masked_select(pos, mask)
 
-        x_grid = torch.index_select(x, 1, pos_grid)
-        x_ada = torch.index_select(x, 1, pos_ada)
-        loc_grid = torch.index_select(loc, 1, pos_grid)
-        loc_ada = torch.index_select(loc, 1, pos_ada)
+    x_grid = torch.index_select(x, 1, pos_grid)
+    x_ada = torch.index_select(x, 1, pos_ada)
+    loc_grid = torch.index_select(loc, 1, pos_grid)
+    loc_ada = torch.index_select(loc, 1, pos_ada)
 
-        x = torch.cat([x_grid, x_ada], 1)
-        loc = torch.cat([loc_grid, loc_ada], 1)
-        N_grid = x_grid.shape[1]
-        return x, loc, N_grid
+    x = torch.cat([x_grid, x_ada], 1)
+    loc = torch.cat([loc_grid, loc_ada], 1)
+    N_grid = x_grid.shape[1]
+    return x, loc, N_grid
 
 
 def extract_local_feature(src, loc, kernel_size=(3, 3)):
@@ -937,7 +933,7 @@ def merge_tokens_agg(x, loc, loc_down, idx_agg, weight=None, return_weight=False
 #
 
 
-def token2map_agg_sparse(x, loc, loc_orig, idx_agg, map_size, weight=None):
+def token2map_agg_sparse(x, loc, loc_orig, idx_agg, map_size, weight=None, kernel=1, sigma=2):
     # x = torch.rand(2, 4, 3).half()
     # loc = torch.rand(2, 4, 2)
     # loc_orig = torch.rand(2, 7, 2)
@@ -948,7 +944,6 @@ def token2map_agg_sparse(x, loc, loc_orig, idx_agg, map_size, weight=None):
     H, W = map_size
     B, N, C = x.shape
     N0 = loc_orig.shape[1]
-
     device = x.device
     loc_orig = loc_orig.clamp(-1, 1)
     loc_orig = 0.5 * (loc_orig + 1) * torch.FloatTensor([W, H]).to(device)[None, None, :] - 0.5
@@ -967,19 +962,29 @@ def token2map_agg_sparse(x, loc, loc_orig, idx_agg, map_size, weight=None):
 
     A = torch.sparse.FloatTensor(coor, value, torch.Size([B*H*W, B*N]))
 
-    with torch.cuda.amp.autocast(enabled=False):
-        all_weight = A.type(torch.float32) @ x.new_ones(B*N, 1).type(torch.float32) + 1e-6
-        all_weight = all_weight.type(x.dtype)
-
+    all_weight = A.type(torch.float32) @ x.new_ones(B*N, 1).type(torch.float32) + 1e-6
+    all_weight = all_weight.type(x.dtype)
     value = value / all_weight[idx_HW_orig.reshape(-1), 0]
-    A = torch.sparse.FloatTensor(coor, value, torch.Size([B*H*W, B*N]))
 
-    with torch.cuda.amp.autocast(enabled=False):
+    if kernel > 1 and C > N:
+        A = x.new_zeros(B * H * W, N)
+        A[idx_HW_orig.reshape(-1), idx_agg.reshape(-1)] = value.reshape(-1)
+        A = A.reshape(B, H, W, N).permute(0, 3, 1, 2)
+        A = guassian_filt(A, kernel, sigma)
+        A = A.flatten(2).permute(0, 2, 1)
+        x_out = A @ x
+        x_out = x_out.type(x.dtype)
+        x_out = x_out.reshape(B, H, W, C).permute(0, 3, 1, 2).contiguous()
+        all_weight = all_weight.reshape(B, H, W, 1).permute(0, 3, 1, 2).contiguous()
+    else:
+        A = torch.sparse.FloatTensor(coor, value, torch.Size([B * H * W, B * N]))
         x_out = A.type(torch.float32) @ x.reshape(B*N, C).type(torch.float32)
         x_out = x_out.type(x.dtype)
+        x_out = x_out.reshape(B, H, W, C).permute(0, 3, 1, 2).contiguous()
+        all_weight = all_weight.reshape(B, H, W, 1).permute(0, 3, 1, 2).contiguous()
+        if kernel > 1:
+            x_out = guassian_filt(x_out, kernel, sigma)
 
-    x_out = x_out.reshape(B, H, W, C).permute(0, 3,  1, 2).contiguous()
-    all_weight = all_weight.reshape(B, H, W, 1).permute(0, 3,  1, 2).contiguous()
     return x_out, all_weight
 
 
@@ -1129,6 +1134,7 @@ def map2token_agg_mat_nearest(feature_map, loc, loc_orig, idx_agg, weight=None):
     A = torch.sparse_coo_tensor(indices, value.reshape(-1), (B, N0, H*W))
     A = A.to_dense()
 
+
     idx_batch = torch.arange(B, device=device)[:, None].expand(B, N0)
     idx_tokens_orig = torch.arange(N0, device=device)[None, :].expand(B, N0)
     if weight is None:
@@ -1229,82 +1235,82 @@ def map2token_agg_mat(feature_map, loc, loc_orig, idx_agg, weight=None):
     return tokens
 
 
-# def map2token_agg_mat_bug(feature_map, loc, loc_orig, idx_agg, weight=None):
-#     ''' realized by 2 attention matrix'''
-#     # feature_map = torch.rand(2, 3, 5, 5)
-#     # loc = torch.rand(2, 4, 2)
-#     # loc_orig = torch.rand(2, 7, 2) - 0.5
-#     # idx_agg = (torch.rand(2, 7) * 3).long()
-#     # weight = None
-#
-#     B, C, H, W = feature_map.shape
-#     device = feature_map.device
-#     N = loc.shape[1]
-#     N0 = loc_orig.shape[1]
-#
-#     loc_orig = 0.5 * (loc_orig + 1) * torch.FloatTensor([W, H]).to(device)[None, None, :] - 0.5
-#     x = loc_orig[:, :, 0].reshape(-1)
-#     y = loc_orig[:, :, 1].reshape(-1)
-#
-#     h, w = H, W
-#
-#     x_grid = x
-#     x_lo = x_grid.floor().long().clamp(min=0, max=w - 1)
-#     x_hi = (x_lo + 1).clamp(max=w - 1)
-#     x_grid = torch.min(x_hi.float(), x_grid)
-#     x_w = x_grid - x_lo.float()
-#
-#     y_grid = y
-#     y_lo = y_grid.floor().long().clamp(min=0, max=h - 1)
-#     y_hi = (y_lo + 1).clamp(max=h - 1)
-#     y_grid = torch.min(y_hi.float(), y_grid)
-#     y_w = y_grid - y_lo.float()
-#
-#     w_ylo_xlo = (1.0 - x_w) * (1.0 - y_w)
-#     w_ylo_xhi = x_w * (1.0 - y_w)
-#     w_yhi_xlo = (1.0 - x_w) * y_w
-#     w_yhi_xhi = x_w * y_w
-#
-#     i_ylo_xlo = (y_lo * w + x_lo).detach()
-#     i_ylo_xhi = (y_lo * w + x_hi).detach()
-#     i_yhi_xlo = (y_hi * w + x_lo).detach()
-#     i_yhi_xhi = (y_hi * w + x_hi).detach()
-#
-#     idx_HW_orig = torch.stack([i_ylo_xlo, i_ylo_xhi, i_yhi_xlo, i_yhi_xhi], dim=1)
-#     idx_batch = torch.arange(B, device=device)[:, None, None].expand(B, N0, 4)
-#     idx_tokens_orig = torch.arange(N0, device=device)[None, :, None].expand(B, N0, 4)
-#     value = torch.stack([w_ylo_xlo, w_ylo_xhi, w_yhi_xlo, w_yhi_xhi], dim=1).type(feature_map.dtype)
-#
-#
-#     # this will cause error on edges where the four pixel is the same one.
-#     # the weight is not the sum but the last one (usually 0)
-#     A = feature_map.new_zeros(B, N0, H*W)
-#     A[idx_batch.reshape(-1), idx_tokens_orig.reshape(-1), idx_HW_orig.reshape(-1)] = value.reshape(-1)
-#
-#
-#     # indices = torch.stack([idx_batch.reshape(-1), idx_tokens_orig.reshape(-1), idx_HW_orig.reshape(-1)], dim=0)
-#     # A = torch.sparse_coo_tensor(indices, value.reshape(-1), (B, N0, H*W))
-#     # A = A.to_dense()
-#
-#
-#     idx_batch = torch.arange(B, device=device)[:, None].expand(B, N0)
-#     idx_tokens_orig = torch.arange(N0, device=device)[None, :].expand(B, N0)
-#     if weight is None:
-#         weight = feature_map.new_ones(B, N0, 1)
-#
-#     indices = torch.stack([idx_batch.reshape(-1), idx_agg.reshape(-1), idx_tokens_orig.reshape(-1)], dim=0)
-#     A1 = torch.sparse_coo_tensor(indices, weight.reshape(-1).type(feature_map.dtype), (B, N, N0))
-#     A1 = A1.to_dense()
-#
-#     # A1 = feature_map.new_zeros(B, N, N0)
-#     # A1[idx_batch.reshape(-1), idx_agg.reshape(-1), idx_tokens_orig.reshape(-1)] = weight.reshape(-1).type(feature_map.dtype)
-#     # A1 = A1 / (A1.sum(dim=-1, keepdim=True) +1e-6)
-#
-#     A = A1 @ A
-#
-#     tokens = A @ feature_map.flatten(2).permute(0, 2, 1)
-#
-#     return tokens
+def map2token_agg_mat_bug(feature_map, loc, loc_orig, idx_agg, weight=None):
+    ''' realized by 2 attention matrix'''
+    # feature_map = torch.rand(2, 3, 5, 5)
+    # loc = torch.rand(2, 4, 2)
+    # loc_orig = torch.rand(2, 7, 2) - 0.5
+    # idx_agg = (torch.rand(2, 7) * 3).long()
+    # weight = None
+
+    B, C, H, W = feature_map.shape
+    device = feature_map.device
+    N = loc.shape[1]
+    N0 = loc_orig.shape[1]
+
+    loc_orig = 0.5 * (loc_orig + 1) * torch.FloatTensor([W, H]).to(device)[None, None, :] - 0.5
+    x = loc_orig[:, :, 0].reshape(-1)
+    y = loc_orig[:, :, 1].reshape(-1)
+
+    h, w = H, W
+
+    x_grid = x
+    x_lo = x_grid.floor().long().clamp(min=0, max=w - 1)
+    x_hi = (x_lo + 1).clamp(max=w - 1)
+    x_grid = torch.min(x_hi.float(), x_grid)
+    x_w = x_grid - x_lo.float()
+
+    y_grid = y
+    y_lo = y_grid.floor().long().clamp(min=0, max=h - 1)
+    y_hi = (y_lo + 1).clamp(max=h - 1)
+    y_grid = torch.min(y_hi.float(), y_grid)
+    y_w = y_grid - y_lo.float()
+
+    w_ylo_xlo = (1.0 - x_w) * (1.0 - y_w)
+    w_ylo_xhi = x_w * (1.0 - y_w)
+    w_yhi_xlo = (1.0 - x_w) * y_w
+    w_yhi_xhi = x_w * y_w
+
+    i_ylo_xlo = (y_lo * w + x_lo).detach()
+    i_ylo_xhi = (y_lo * w + x_hi).detach()
+    i_yhi_xlo = (y_hi * w + x_lo).detach()
+    i_yhi_xhi = (y_hi * w + x_hi).detach()
+
+    idx_HW_orig = torch.stack([i_ylo_xlo, i_ylo_xhi, i_yhi_xlo, i_yhi_xhi], dim=1)
+    idx_batch = torch.arange(B, device=device)[:, None, None].expand(B, N0, 4)
+    idx_tokens_orig = torch.arange(N0, device=device)[None, :, None].expand(B, N0, 4)
+    value = torch.stack([w_ylo_xlo, w_ylo_xhi, w_yhi_xlo, w_yhi_xhi], dim=1).type(feature_map.dtype)
+
+
+    # this will cause error on edges where the four pixel is the same one.
+    # the weight is not the sum but the last one (usually 0)
+    A = feature_map.new_zeros(B, N0, H*W)
+    A[idx_batch.reshape(-1), idx_tokens_orig.reshape(-1), idx_HW_orig.reshape(-1)] = value.reshape(-1)
+
+
+    # indices = torch.stack([idx_batch.reshape(-1), idx_tokens_orig.reshape(-1), idx_HW_orig.reshape(-1)], dim=0)
+    # A = torch.sparse_coo_tensor(indices, value.reshape(-1), (B, N0, H*W))
+    # A = A.to_dense()
+
+
+    idx_batch = torch.arange(B, device=device)[:, None].expand(B, N0)
+    idx_tokens_orig = torch.arange(N0, device=device)[None, :].expand(B, N0)
+    if weight is None:
+        weight = feature_map.new_ones(B, N0, 1)
+
+    indices = torch.stack([idx_batch.reshape(-1), idx_agg.reshape(-1), idx_tokens_orig.reshape(-1)], dim=0)
+    A1 = torch.sparse_coo_tensor(indices, weight.reshape(-1).type(feature_map.dtype), (B, N, N0))
+    A1 = A1.to_dense()
+
+    # A1 = feature_map.new_zeros(B, N, N0)
+    # A1[idx_batch.reshape(-1), idx_agg.reshape(-1), idx_tokens_orig.reshape(-1)] = weight.reshape(-1).type(feature_map.dtype)
+    # A1 = A1 / (A1.sum(dim=-1, keepdim=True) +1e-6)
+
+    A = A1 @ A
+
+    tokens = A @ feature_map.flatten(2).permute(0, 2, 1)
+
+    return tokens
 
 
 '''merge according to feature cosine similarity'''
@@ -1398,10 +1404,64 @@ def merge_tokens_agg_dist(x, loc, index_down, x_down, idx_agg, weight=None, retu
     loc_out = tmp[..., C:]
     idx_agg = index_points(idx_agg_t[..., None], idx_agg).squeeze(-1)
 
+    if torch.isinf(x_out).any():
+        save_dict = {
+            'x': x,
+            'loc': loc,
+            'index_down': index_down,
+            'x_down': x_down,
+            'idx': idx,
+            'weight': weight,
+            'norm_weight': norm_weight,
+            'all_weight': all_weight
+        }
+        for key in save_dict.keys():
+            save_dict[key] = save_dict[key].detach().cpu()
+        torch.save(save_dict, 'debug_merge_cosine.pth')
+
     if return_weight:
         weight_t = index_points(norm_weight, idx_agg)
         return x_out, loc_out, idx_agg, weight_t
     return x_out, loc_out, idx_agg
+
+'''clean merge'''
+def merge_tokens_agg_dist2(x, index_down, x_down, idx_agg, weight=None):
+    B, N, C = x.shape
+    Ns = x_down.shape[1]
+
+    # cos_sim = F.cosine_similarity(x[:, :, None, :], x_down[:, None, :, :], dim=-1)
+    # idx_agg_t = cos_sim.argmax(axis=2)
+
+    # dist = x.unsqueeze(2) - x_down.unsqueeze(1)
+    # dist = dist.norm(p=2, dim=-1)
+    # idx_agg_t = dist.argmin(axis=2)
+    idx_agg_t = torch.cdist(x, x_down, p=2).argmin(axis=2)
+
+    # make sure selected tokens merge to itself
+    if index_down is not None:
+        idx_batch = torch.arange(B, device=x.device)[:, None].expand(B, Ns)
+        idx_tmp = torch.arange(Ns, device=x.device)[None, :].expand(B, Ns)
+        idx_agg_t[idx_batch.reshape(-1), index_down.reshape(-1)] = idx_tmp.reshape(-1)
+
+    idx = idx_agg_t + torch.arange(B)[:, None].to(x.device) * Ns
+
+    if weight is None:
+        weight = x.new_ones(B, N, 1)
+    all_weight = weight.new_zeros(B * Ns, 1)
+    all_weight.index_add_(dim=0, index=idx.reshape(B * N), source=weight.reshape(B * N, 1))
+    all_weight = all_weight + 1e-6
+    norm_weight = weight / all_weight[idx]
+
+    tmp = x.new_zeros(B * Ns, C)
+    source = x * norm_weight
+    source = source.to(x.device).type(x.dtype)
+    tmp.index_add_(dim=0, index=idx.reshape(B * N), source=source.reshape(B * N, C))
+    tmp = tmp.reshape(B, Ns, C)
+    x_out = tmp[..., :C]
+    idx_agg = index_points(idx_agg_t[..., None], idx_agg).squeeze(-1)
+
+    weight_t = index_points(norm_weight, idx_agg)
+    return x_out, idx_agg, weight_t
 
 
 '''merge according to qkv'''
@@ -1412,13 +1472,13 @@ def merge_tokens_agg_qkv(q, k, v, index_down, idx_agg, weight=None, return_weigh
     scale = q.shape[-1] ** -0.5
     attn = (q @ k.transpose(-2, -1)) * scale
 
-    # # gumble argmax
-    # p_value = 1e-6
-    # noise = torch.rand_like(attn)
-    # noise = -1 * (noise + p_value).log()
-    # noise = -1 * (noise + p_value).log()
-    # idx_agg_t = (attn + noise).argmax(axis=1)
-    idx_agg_t = attn.argmax(axis=1)
+    # gumble argmax
+    p_value = 1e-6
+    noise = torch.rand_like(attn)
+    noise = -1 * (noise + p_value).log()
+    noise = -1 * (noise + p_value).log()
+    idx_agg_t = (attn + noise).argmax(axis=1)
+    # idx_agg_t = attn.argmax(axis=1)
 
     # make sure selected tokens merge to itself
     idx_batch = torch.arange(B, device=v.device)[:, None].expand(B, Ns)
@@ -1435,7 +1495,7 @@ def merge_tokens_agg_qkv(q, k, v, index_down, idx_agg, weight=None, return_weigh
     attn = attn.softmax(dim=-1)
     attn = mask * attn
     if weight is not None:
-        attn = attn * weight.permute(0, 2, 1)
+        attn = attn * weight[:, None, :]
     attn = attn / attn.sum(dim=-1, keepdim=True)
 
     x_out = (attn @ v).transpose(1, 2).reshape(B, Ns, C)
@@ -1448,26 +1508,6 @@ def merge_tokens_agg_qkv(q, k, v, index_down, idx_agg, weight=None, return_weigh
         return x_out, idx_agg, weight_t
     return x_out, idx_agg
 
-
-'''merge according to qkv'''
-def qkv_sample(x, sample_num):
-    B, N, C = x.shape
-    scale = x.shape[-1] ** -0.5
-    attn = (x @ x.transpose(-2, -1)) * scale
-    attn = attn.softmax(dim=-1)
-
-    # select centroid
-    npoint = sample_num
-    device = x.device
-
-    centroids = torch.zeros(B, npoint, dtype=torch.long).to(device)
-    batch_indices = torch.arange(B, dtype=torch.long).to(device)
-    for i in range(npoint):
-        farthest = attn.sum(dim=1).argmax(dim=-1)
-        centroids[:, i] = farthest
-        attn[batch_indices, farthest, :] = 0
-        attn[batch_indices, :, farthest] = 0
-    return centroids
 
 
 def conf_resample(conf_map, N):
@@ -1498,48 +1538,11 @@ def farthest_point_sample(xyz, npoint):
     for i in range(npoint):
         centroids[:, i] = farthest
         centroid = xyz[batch_indices, farthest, :].view(B, 1, C)
-        dist = torch.sum((xyz - centroid) ** 2, -1)
+        dist = torch.cdist(xyz, centroid).squeeze(-1)
+        # dist = torch.sum((xyz - centroid) ** 2, -1)
         mask = dist < distance
         distance[mask] = dist[mask]
         farthest = torch.max(distance, -1)[1]
-    return centroids
-
-
-def farthest_point_sample2(xyz, npoint):
-    """
-    Input:
-        xyz: pointcloud data, [B, N, 3]
-        npoint: number of samples
-    Return:
-        centroids: sampled pointcloud index, [B, npoint]
-    """
-    device = xyz.device
-    B, N, C = xyz.shape
-    dists_matrix = torch.cdist(xyz, xyz)
-
-    centroids = torch.zeros(B, npoint, dtype=torch.long).to(device)
-    distance = torch.ones(B, N).to(device) * 1e10
-    farthest = torch.randint(0, N, (B,), dtype=torch.long).to(device)
-    batch_indices = torch.arange(B, dtype=torch.long).to(device)
-    for i in range(npoint):
-        centroids[:, i] = farthest
-        dist = dists_matrix[batch_indices, farthest,:]
-        # centroid = xyz[batch_indices, farthest, :].view(B, 1, C)
-        # dist = torch.sum((xyz - centroid) ** 2, -1)**0.5
-        mask = dist < distance
-        distance[mask] = dist[mask]
-        farthest = torch.max(distance, -1)[1]
-    return centroids
-
-
-def feature_try_sample(xyz, npoint):
-    """
-    find the feature far away from the mean
-    """
-    # dist = dist.norm(p=2, dim=-1)
-    # idx_agg_t = dist.argmin(axis=2)
-    dist = (xyz - xyz.mean(dim=1, keepdim=True)).norm(p=2, dim=-1)
-    _, centroids = torch.topk(dist, npoint, dim=1)
     return centroids
 
 
@@ -1559,6 +1562,17 @@ def farthest_point_sample_try(xyz, npoint):
     dists = dists.min(dim=-1)[0]
     _, index = torch.topk(dists, k=npoint, dim=-1)
     return index
+
+
+def feature_try_sample(xyz, npoint):
+    """
+    find the feature far away from the mean
+    """
+    # dist = dist.norm(p=2, dim=-1)
+    # idx_agg_t = dist.argmin(axis=2)
+    dist = (xyz - xyz.mean(dim=1, keepdim=True)).norm(p=2, dim=-1)
+    _, centroids = torch.topk(dist, npoint, dim=1)
+    return centroids
 
 
 '''merge according to feature distance'''
@@ -1683,6 +1697,52 @@ def map2token_Agg(feature_map, Agg, loc_orig):
     return tokens
 
 
+def show_tokens_merge_multi(x, out, N_grid=14*14):
+    import matplotlib.pyplot as plt
+    IMAGENET_DEFAULT_MEAN = torch.tensor([0.485, 0.456, 0.406], device=x.device)[None, :, None, None]
+    IMAGENET_DEFAULT_STD = torch.tensor([0.229, 0.224, 0.225], device=x.device)[None, :, None, None]
+    x = x * IMAGENET_DEFAULT_STD + IMAGENET_DEFAULT_MEAN
+    # for i in range(x.shape[0]):
+    for i in range(1):
+        img = x[i].permute(1, 2, 0).detach().cpu()
+        ax = plt.subplot(3, 5, 1)
+        ax.clear()
+        ax.imshow(img)
+        for lv in range(len(out)):
+            x_token, map_size, Agg, loc_orig, A = out[lv]
+            B, N, _ = Agg.shape
+            tmp = torch.rand([N, 3], device=x.device)[None, :, :].expand(B, N, 3).float()
+            # tmp = x_token[:, :, :3]
+            # # max = tmp.max(dim=-1, keepdim=True)[0]
+            # # min = tmp.min(dim=-1, keepdim=True)[0]
+            # max, min = tmp.max(), tmp.min()
+            # tmp = (tmp - min) / (max-min)
+            H, W, _ = img.shape
+            x_map = token2map_Agg(tmp, Agg, loc_orig, [H//4, W//4])
+            x_map = x_map[i].permute(1, 2, 0).detach().cpu().float()
+            ax = plt.subplot(3, 5, lv+2)
+            ax.clear()
+            ax.imshow(x_map)
+
+            ax = plt.subplot(3, 5, lv+2 + 10)
+            ax.clear()
+            ax.imshow(A[i].float().detach().cpu())
+
+    return
+
+
+def show_conf_merge_multi(conf, Agg, loc_orig):
+    H = int(conf.shape[1]**0.5)
+    lv = int(math.log2(28 / H) + 7 + 0)
+
+    conf = conf - conf.min(dim=1, keepdim=True)[0]
+    conf_map = token2map_Agg(conf, Agg, loc_orig, [28, 28])
+
+    ax = plt.subplot(3, 5, lv)
+    ax.clear()
+    ax.imshow(conf_map[0, 0].detach().cpu().float(), vmin=0, vmax=7)
+
+
 def show_tokens_merge(x, out, N_grid=14*14):
     # import matplotlib.pyplot as plt
     IMAGENET_DEFAULT_MEAN = torch.tensor([0.485, 0.456, 0.406], device=x.device)[None, :, None, None]
@@ -1736,7 +1796,7 @@ def show_tokens_merge(x, out, N_grid=14*14):
             # tmp = map2token_agg_fast_nearest(color_map, N, loc_orig, idx_agg, agg_weight)
 
             H, W, _ = img.shape
-            idx_map, _ = token2map_agg_sparse(tmp, loc_orig, loc_orig, idx_agg, [H//4, W//4])
+            idx_map, _ = token2map_agg_mat(tmp, loc_orig, loc_orig, idx_agg, [H//4, W//4])
             idx_map = idx_map[i].permute(1, 2, 0).detach().cpu().float()
             ax.imshow(idx_map)
     # plt.show()
@@ -1744,71 +1804,49 @@ def show_tokens_merge(x, out, N_grid=14*14):
     return
 
 
-def show_conf_merge(conf, loc, loc_orig, idx_agg, l=2, c=5, n=0, vmin=0, vmax=7):
-    H0 = 56
-    H = int(conf.shape[1]**0.5)
-    if n <= 0:
-        n = int(math.log2(H0 / H) + 7 + 0)
+def show_conf_merge(conf, loc, loc_orig, idx_agg):
+    N = int(conf.shape[1])
+    lv = int(math.log2(64*48 / N) / 2)
 
     # conf = F.softmax(conf, dim=1)
-    # conf = conf.exp()
     conf = conf - conf.min(dim=1, keepdim=True)[0]
-    conf_map, _ = token2map_agg_sparse(conf, loc, loc_orig, idx_agg, [H0, H0])
-    ax = plt.subplot(l, c, n)
+    conf_map, _ = token2map_agg_mat(conf, loc, loc_orig, idx_agg, [64 // 2**lv, 48 // 2**lv])
+    ax = plt.subplot(2, 5, lv+7)
     ax.clear()
-    if vmax is not None and vmin is not None:
-        ax.imshow(conf_map[0, 0].detach().cpu().float(), vmin=vmin, vmax=vmax)
-    else:
-        ax.imshow(conf_map[0, 0].detach().cpu().float())
+    ax.imshow(conf_map[0, 0].detach().cpu(), vmin=0, vmax=7)
 
 
-    # plt.colorbar()
+def get_merge_way(input_dict, sample_num):
+    x = input_dict['x']
+    idx_agg = input_dict['idx_agg']
+    agg_weight = input_dict['agg_weight']
+    with torch.no_grad():
+        index_down = farthest_point_sample(x, sample_num)
+    x_down = index_points(x, index_down)
 
+    B, N, C = x.shape
+    Ns = x_down.shape[1]
+    idx_agg_t = torch.cdist(x, x_down, p=2).argmin(axis=2)
 
-def show_tokens_merge_multi(x, out, N_grid=14*14):
-    import matplotlib.pyplot as plt
-    IMAGENET_DEFAULT_MEAN = torch.tensor([0.485, 0.456, 0.406], device=x.device)[None, :, None, None]
-    IMAGENET_DEFAULT_STD = torch.tensor([0.229, 0.224, 0.225], device=x.device)[None, :, None, None]
-    x = x * IMAGENET_DEFAULT_STD + IMAGENET_DEFAULT_MEAN
-    # for i in range(x.shape[0]):
-    for i in range(1):
-        img = x[i].permute(1, 2, 0).detach().cpu()
-        ax = plt.subplot(3, 5, 1)
-        ax.clear()
-        ax.imshow(img)
-        for lv in range(len(out)):
-            x_token, map_size, Agg, loc_orig, A = out[lv]
-            B, N, _ = Agg.shape
-            tmp = torch.rand([N, 3], device=x.device)[None, :, :].expand(B, N, 3).float()
-            # tmp = x_token[:, :, :3]
-            # # max = tmp.max(dim=-1, keepdim=True)[0]
-            # # min = tmp.min(dim=-1, keepdim=True)[0]
-            # max, min = tmp.max(), tmp.min()
-            # tmp = (tmp - min) / (max-min)
-            H, W, _ = img.shape
-            x_map = token2map_Agg(tmp, Agg, loc_orig, [H//4, W//4])
-            x_map = x_map[i].permute(1, 2, 0).detach().cpu().float()
-            ax = plt.subplot(3, 5, lv+2)
-            ax.clear()
-            ax.imshow(x_map)
+    # make sure selected tokens merge to itself
+    idx_batch = torch.arange(B, device=x.device)[:, None].expand(B, Ns)
+    idx_tmp = torch.arange(Ns, device=x.device)[None, :].expand(B, Ns)
+    idx_agg_t[idx_batch.reshape(-1), index_down.reshape(-1)] = idx_tmp.reshape(-1)
 
-            ax = plt.subplot(3, 5, lv+2 + 10)
-            ax.clear()
-            ax.imshow(A[i].float().detach().cpu())
+    idx = idx_agg_t + torch.arange(B)[:, None].to(x.device) * Ns
+    weight = x.new_ones(B, N, 1)
+    all_weight = weight.new_zeros(B * Ns, 1)
+    all_weight.index_add_(dim=0, index=idx.reshape(B * N), source=weight.reshape(B * N, 1))
+    all_weight = all_weight + 1e-4
+    norm_weight = weight / all_weight[idx]
 
-    return
+    idx_agg = index_points(idx_agg_t[..., None], idx_agg).squeeze(-1)
+    weight_t = index_points(norm_weight, idx_agg)
 
+    agg_weight_down = agg_weight * weight_t
+    agg_weight_down = agg_weight_down / agg_weight_down.max(dim=1, keepdim=True)[0]
 
-def show_conf_merge_multi(conf, Agg, loc_orig):
-    H = int(conf.shape[1]**0.5)
-    lv = int(math.log2(28 / H) + 7 + 0)
-
-    conf = conf - conf.min(dim=1, keepdim=True)[0]
-    conf_map = token2map_Agg(conf, Agg, loc_orig, [28, 28])
-
-    ax = plt.subplot(3, 5, lv)
-    ax.clear()
-    ax.imshow(conf_map[0, 0].detach().cpu().float(), vmin=0, vmax=7)
+    return idx_agg, agg_weight_down
 
 
 
@@ -1942,7 +1980,7 @@ def map2token_agg_fast_nearest(feature_map, N, loc_orig, idx_agg, agg_weight=Non
     N0 = loc_orig.shape[1]
 
     if N0 == N and N == H * W:
-        return feature_map.flatten(2).permute(0, 2, 1)
+        return feature_map.flatten(2).permute(0, 2, 1).contiguous()
 
     loc_orig = 0.5 * (loc_orig + 1) * torch.FloatTensor([W, H]).to(device)[None, None, :] - 0.5
     x = loc_orig[:, :, 0]
@@ -1964,7 +2002,7 @@ def map2token_agg_fast_nearest(feature_map, N, loc_orig, idx_agg, agg_weight=Non
     A = torch.sparse_coo_tensor(indices, value, (B, N, H * W)).to_dense()
     A = A / (A.sum(dim=-1, keepdim=True) + 1e-6)
 
-    tokens = A @ feature_map.permute(0, 2, 3, 1).reshape(B, H * W, C)
+    tokens = A @ feature_map.permute(0, 2, 3, 1).contiguous().reshape(B, H * W, C)
     return tokens
 
 
@@ -2134,3 +2172,62 @@ def token_cluster_density(x, Ns, idx_agg, weight=None, return_weight=False, conf
         weight_t = index_points(norm_weight, idx_agg)
         return x_out, idx_agg, weight_t
     return x_out, idx_agg
+
+
+
+
+def downup_sparse(target_dict, source_dict):
+    x_s = source_dict['x']
+    x_t = target_dict['x']
+    idx_agg_s = source_dict['idx_agg']
+    idx_agg_t = target_dict['idx_agg']
+    agg_weight_t = target_dict['agg_weight']
+    B, T, C = x_t.shape
+    B, S, C = x_s.shape
+    N0 = idx_agg_s.shape[1]
+
+    idx_agg_t = idx_agg_t + torch.arange(B, device=x_s.device)[:, None] * T
+    idx_agg_s = idx_agg_s + torch.arange(B, device=x_s.device)[:, None] * S
+
+    coor = torch.stack([idx_agg_t, idx_agg_s], dim=0).reshape(2, B*N0)
+    weight = agg_weight_t
+    if weight is None:
+        weight = x_s.new_ones(B, N0, 1)
+    weight = weight.reshape(-1)
+
+    with torch.cuda.amp.autocast(enabled=False):
+        A = torch.sparse.FloatTensor(coor, weight, torch.Size([B*T, B*S]))
+        all_weight = A.type(torch.float32) @ x_s.new_ones(B*S, 1).type(torch.float32) + 1e-6
+        # all_weight = A @ x_s.new_ones(B*S, 1) + 1e-6
+        all_weight = all_weight.type(x_s.dtype)
+        weight = weight / all_weight[(idx_agg_t).reshape(-1), 0]
+
+    with torch.cuda.amp.autocast(enabled=False):
+        A = torch.sparse.FloatTensor(coor, weight, torch.Size([B*T, B*S]))
+        x_out = A.type(torch.float32) @ x_s.reshape(B*S, C).type(torch.float32)
+        x_out = x_out.reshape(B, T, C).type(x_s.dtype)
+    return x_out
+
+
+def downup(target_dict, source_dict):
+    x_s = source_dict['x']
+    x_t = target_dict['x']
+    idx_agg_s = source_dict['idx_agg']
+    idx_agg_t = target_dict['idx_agg']
+    agg_weight_t = target_dict['agg_weight']
+    B, T, _ = x_t.shape
+    B, S, C = x_s.shape
+    N0 = idx_agg_s.shape[1]
+    idx_batch = torch.arange(B, device=idx_agg_t.device)[:, None].expand(B, N0)
+
+    if agg_weight_t is None:
+        weight = x_s.new_ones(B*N0)
+    else:
+        weight = agg_weight_t.reshape(-1)
+
+    coor = torch.stack([idx_batch, idx_agg_t, idx_agg_s], dim=0).reshape(3, B*N0)
+    A = torch.sparse.FloatTensor(coor, weight, torch.Size([B, T, S]))
+    A = A.to_dense()
+    A = A / (A.sum(dim=-1, keepdim=True) + 1e-6)
+    x_out = A @ x_s
+    return x_out

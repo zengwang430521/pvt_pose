@@ -93,7 +93,7 @@ class MyDWConv(nn.Module):
         x_map, _ = token2map_agg_mat(x, None, loc_orig, idx_agg, [H, W])
         x_map = self.dwconv(x_map)
         x = map2token_agg_fast_nearest(x_map, N, loc_orig, idx_agg, agg_weight) + \
-            self.dwconv_skip(x.permute(0, 2, 1)).permute(0, 2, 1)
+            self.dwconv_skip(x.permute(0, 2, 1).contiguous()).permute(0, 2, 1).contiguous()
         return x
 
 
@@ -144,7 +144,7 @@ class MyAttention(nn.Module):
     def forward(self, x, loc_orig, x_source, idx_agg_source, H, W, conf_source=None):
         B, N, C = x.shape
         Ns = x_source.shape[1]
-        q = self.q(x).reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
+        q = self.q(x).reshape(B, N, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3).contiguous()
 
         if not self.linear:
             if self.sr_ratio > 1:
@@ -157,15 +157,15 @@ class MyAttention(nn.Module):
 
                 x_source = self.sr(x_source)
                 _, _, h, w = x_source.shape
-                x_source = x_source.reshape(B, C, -1).permute(0, 2, 1)
+                x_source = x_source.reshape(B, C, -1).permute(0, 2, 1).contiguous()
                 x_source = self.norm(x_source)
                 conf_source = F.avg_pool2d(conf_source, kernel_size=self.sr_ratio, stride=self.sr_ratio)
-                conf_source = conf_source.reshape(B, 1, -1).permute(0, 2, 1)
+                conf_source = conf_source.reshape(B, 1, -1).permute(0, 2, 1).contiguous()
 
         else:
             print('error!')
 
-        kv = self.kv(x_source).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+        kv = self.kv(x_source).reshape(B, -1, 2, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4).contiguous()
         k, v = kv[0], kv[1]
 
         attn = (q @ k.transpose(-2, -1)) * self.scale
@@ -272,7 +272,7 @@ class DownLayer(nn.Module):
         B, N, C = x.shape
         N0 = idx_agg.shape[1]
         if N0 == N and N == H * W:
-            x_map = x.reshape(B, H, W, C).permute(0, 3, 1, 2)
+            x_map = x.reshape(B, H, W, C).permute(0, 3, 1, 2).contiguous()
         else:
             x_map, _ = token2map_agg_mat(x, None, pos_orig, idx_agg, [H, W])
 
