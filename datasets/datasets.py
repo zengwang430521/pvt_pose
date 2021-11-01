@@ -41,7 +41,7 @@ def create_dataset(dataset, options, **kwargs):
         datasets, partition = dataset_setting[dataset]
         return MeshMixDataset(datasets, partition, options, **kwargs)
     else:
-        return BaseDataset(dataset, options, **kwargs)
+        return BaseDataset(options,dataset, **kwargs)
 
 
 def create_val_dataset(dataset, options):

@@ -62,7 +62,7 @@ class BaseDataset(Dataset):
             self.pose = self.data['pose'].astype(np.float)
             self.betas = self.data['shape'].astype(np.float)
 
-            if 'h36m' in dataset or 'up-3d' or '3dpw' in dataset:
+            if 'h36m' in dataset or 'up-3d' in dataset or '3dpw' in dataset:
                 self.has_smpl = np.ones(len(self.imgname)).astype(np.int)
             elif dataset == 'mpi-inf-3dhp':
                 self.has_smpl = self.data['has_smpl'].astype(np.int)
