@@ -154,7 +154,7 @@ def evaluate(model, evaluator, dataloader, device):
             input_batch = data_iter.next()
             images = input_batch['img'].to(device)
             pred_para = model(images)
-            pred_joints_3d, gt_joints_3d, pred_joints_3d_spin, gt_joints_3d_spin = evaluator(pred_para, input_batch)
+            pred_joints_3d, gt_joints_3d, pred_joints_3d_spin, gt_joints_3d_spin, pred_vertices, gt_vertices = evaluator(pred_para, input_batch)
 
             # pred_joints_3d = utils.all_gather(pred_joints_3d)
             # pred_joints_3d = [p.to(device) for p in pred_joints_3d]
@@ -203,17 +203,26 @@ def evaluate(model, evaluator, dataloader, device):
             #                      MPJPE_spin=float(error_spin.mean()),
             #                      MPJPE_PA_spin=float(error_pa_spin.mean()),
             #                      )
+
+            '''
+            vertices
+            '''
+            error_vertices = torch.sqrt(((pred_vertices - gt_vertices) ** 2).sum(dim=-1)).mean(dim=-1).detach().cpu().numpy() * 1000
+
             batch_size = images.shape[0]
             metric_logger.meters['MPJPE'].update(error.mean().item(), n=batch_size)
             metric_logger.meters['MPJPE_PA'].update(error_pa.mean().item(), n=batch_size)
             metric_logger.meters['MPJPE_spin'].update(error_spin.mean().item(), n=batch_size)
             metric_logger.meters['MPJPE_PA_spin'].update(error_pa_spin.mean().item(), n=batch_size)
+            metric_logger.meters['MPVPE'].update(error_vertices.mean().item(), n=batch_size)
+
         break
     metric_logger.synchronize_between_processes()
     stats = dict(MPJPE=float(metric_logger.MPJPE.global_avg),
                  MPJPE_PA=float(metric_logger.MPJPE_PA.global_avg),
                  MPJPE_spin=float(metric_logger.MPJPE_spin.global_avg),
                  MPJPE_PA_spin=float(metric_logger.MPJPE_PA_spin.global_avg),
+                 MPVPE=float(metric_logger.MPVPE.global_avg),
                  )
 
     # stats = dict(MPJPE=float(np.concatenate(mpjpe, axis=0).mean()),

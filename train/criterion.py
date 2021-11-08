@@ -1709,12 +1709,12 @@ class JointEvaluator(nn.Module):
         pred_vertices = self.apply_smpl(pred_pose, pred_shape)
         pred_joints_3d = self.smpl.get_train_joints(pred_vertices)[:, self.joint_mapper]
 
+        batch_size = pred_shape.shape[0]
+        gt_vertices = pred_vertices.new_zeros([batch_size, 6890, 3])
         if '3dpw' in self.options.val_dataset :
             gt_pose = input_batch['pose'].to(self.device)
             gt_betas = input_batch['betas'].to(self.device)
             gender = input_batch['gender'].to(self.device)
-            batch_size = pred_shape.shape[0]
-            gt_vertices = gt_pose.new_zeros([batch_size, 6890, 3])
             with torch.no_grad():
                 gt_vertices[gender < 0] = self.smpl(gt_pose[gender < 0], gt_betas[gender < 0])
                 gt_vertices[gender == 0] = self.male_smpl(gt_pose[gender == 0], gt_betas[gender == 0])
@@ -1742,4 +1742,4 @@ class JointEvaluator(nn.Module):
         pred_joints_3d_spin = pred_joints_3d_spin[:, self.spin_joint_mapper, :]
         pred_joints_3d_spin = pred_joints_3d_spin - pred_pelvis_spin
 
-        return pred_joints_3d, gt_joints_3d, pred_joints_3d_spin, gt_joints_3d_spin
+        return pred_joints_3d, gt_joints_3d, pred_joints_3d_spin, gt_joints_3d_spin, pred_vertices, gt_vertices
