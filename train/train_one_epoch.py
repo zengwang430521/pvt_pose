@@ -208,7 +208,6 @@ def evaluate(model, evaluator, dataloader, device):
             metric_logger.meters['MPJPE_PA'].update(error_pa.mean().item(), n=batch_size)
             metric_logger.meters['MPJPE_spin'].update(error_spin.mean().item(), n=batch_size)
             metric_logger.meters['MPJPE_PA_spin'].update(error_pa_spin.mean().item(), n=batch_size)
-        break
     metric_logger.synchronize_between_processes()
     stats = dict(MPJPE=float(metric_logger.MPJPE.global_avg),
                  MPJPE_PA=float(metric_logger.MPJPE_PA.global_avg),

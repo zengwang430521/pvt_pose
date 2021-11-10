@@ -4,6 +4,15 @@
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
     --ntasks 1 --job-name=mesh \
     --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=4 --kill-on-bad-exit=1 \
+    python -u main.py --batch_size=32 --num_workers=5 --num_epochs=100 --summary_steps=100 \
+    --opt=adamw --lr=1e-4 --wd=0.01 --lr_drop=90  --img_res=224 --use_mc \
+     \
+    --model=mypvt3h2_density0_small --dataset=mix1 --head_type=hiratt_hmr \
+    --name=den0_mix1_hiratt  \
+    --val_dataset=3dpw --resume_from=logs/den0_mix1_hiratt/checkpoints/checkpoint_latest.pth \
+    --lam_smpl_beta=0.002 --eval
+
+
     python -u main.py --dataset=spin \
     --batch_size=32 --num_workers=4 --num_epochs=100 --summary_steps=10 \
     --name=my20_2f_opt_f --run_smplify --iter_smplify=50 \
@@ -14,7 +23,7 @@ srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
 
 
 srun -p pat_earth --gres=gpu:2 -n1 --ntasks-per-node=1 --job-name=eval --kill-on-bad-exit=1
-python eval.py  --ngpu=2 --dataset=h36m-p2 --batch_size=256 --checkpoint= --config=
+python eval.py  --ngpu=2 --dataset=3dpw --batch_size=256 --checkpoint= --config=
 
 
 GPUS_PER_NODE=8 ./tools/run_dist_slurm.sh pat_earth eval 8 ./tools/pose.sh
