@@ -63,13 +63,23 @@ class SMPL(nn.Module):
         # This is another lsp joints regressor, we use it for training and evaluation
         self.register_buffer('lsp_regressor_eval', torch.FloatTensor(np.load(cfg.LSP_REGRESSOR_EVAL)).permute(1, 0))
 
-        # We hope the training and evaluation regressor for the lsp joints to be consistent,
-        # so we replace parts of the training regressor used in Graph-CMR.
+        # # We hope the training and evaluation regressor for the lsp joints to be consistent,
+        # # so we replace parts of the training regressor used in Graph-CMR.
+        # train_regressor = torch.cat([self.J_regressor, self.J_regressor_extra], dim=0)
+        # train_regressor = train_regressor[[cfg.JOINTS_IDX]].clone()
+        # idx = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 18]
+        # train_regressor[idx] = self.lsp_regressor_eval
+        # self.register_buffer('train_regressor', train_regressor)
+
+
+
+        # Keep the same setting as CMR and SPIN
         train_regressor = torch.cat([self.J_regressor, self.J_regressor_extra], dim=0)
         train_regressor = train_regressor[[cfg.JOINTS_IDX]].clone()
         idx = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 18]
         train_regressor[idx] = self.lsp_regressor_eval
         self.register_buffer('train_regressor', train_regressor)
+
 
     def forward(self, pose, beta):
         device = pose.device

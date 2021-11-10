@@ -2,9 +2,9 @@
 
 
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
-    --ntasks 1 --job-name=mesh \
-    --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=4 --kill-on-bad-exit=1 \
-    python -u main.py --batch_size=32 --num_workers=5 --num_epochs=100 --summary_steps=100 \
+    --ntasks 4 --job-name=mesh \
+    --gres=gpu:4 --ntasks-per-node=4 --cpus-per-task=4 --kill-on-bad-exit=1 \
+    python -u main.py --batch_size=32 --num_workers=2 --num_epochs=100 --summary_steps=100 \
     --opt=adamw --lr=1e-4 --wd=0.01 --lr_drop=90  --img_res=224 --use_mc \
      \
     --model=mypvt3h2_density0_small --dataset=mix1 --head_type=hiratt_hmr \

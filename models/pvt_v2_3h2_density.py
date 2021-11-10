@@ -16,7 +16,7 @@ from .utils_mine import (
     # farthest_point_sample
 )
 
-from .utils_mine import token_cluster_density
+from .utils_mine import token_cluster_density_fixbug as token_cluster_density
 # from utils_mine import token2map_agg_sparse as token2map_agg_mat
 
 vis = False
@@ -238,7 +238,7 @@ class DownLayer(nn.Module):
     """
 
     def __init__(self, sample_ratio, embed_dim, dim_out, drop_rate, down_block,
-                 k=3, dist_assign=True, ada_dc=False, use_conf=False, conf_scale=0.25, conf_density=False):
+                 k=5, dist_assign=True, ada_dc=False, use_conf=False, conf_scale=0.25, conf_density=False):
         super().__init__()
         # self.sample_num = sample_num
         self.sample_ratio = sample_ratio
@@ -309,7 +309,7 @@ class MyPVT(nn.Module):
                  num_heads=[1, 2, 4, 8], mlp_ratios=[4, 4, 4, 4], qkv_bias=False, qk_scale=None, drop_rate=0.,
                  attn_drop_rate=0., drop_path_rate=0., norm_layer=nn.LayerNorm,
                  depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1], num_stages=4, linear=False,
-                 k=3, dist_assign=True, ada_dc=False, use_conf=False, conf_scale=0.25, conf_density=False,
+                 k=5, dist_assign=True, ada_dc=False, use_conf=False, conf_scale=0.25, conf_density=False,
                  pretrained=None, **kwargs
                  ):
         super().__init__()
@@ -485,7 +485,7 @@ def mypvt3h2_density0_small(pretrained=False, **kwargs):
     model = MyPVT(
         patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
         norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
-        k=3, dist_assign=True, ada_dc=False, use_conf=False, conf_scale=0,
+        k=5, dist_assign=True, ada_dc=False, use_conf=False, conf_scale=0,
         **kwargs)
     model.default_cfg = _cfg()
     return model
@@ -495,7 +495,7 @@ def mypvt3h2_density25_small(pretrained=False, **kwargs):
     model = MyPVT(
         patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
         norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
-        k=3, dist_assign=True, ada_dc=False, use_conf=True, conf_scale=0.25,
+        k=5, dist_assign=True, ada_dc=False, use_conf=True, conf_scale=0.25,
         **kwargs)
     model.default_cfg = _cfg()
     return model
@@ -505,7 +505,7 @@ def mypvt3h2_density50_small(pretrained=False, **kwargs):
     model = MyPVT(
         patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
         norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
-        k=3, dist_assign=True, ada_dc=False, use_conf=True, conf_scale=0.5,
+        k=5, dist_assign=True, ada_dc=False, use_conf=True, conf_scale=0.5,
         **kwargs)
     model.default_cfg = _cfg()
     return model
@@ -516,7 +516,7 @@ def mypvt3h2_densityc_small(pretrained=False, **kwargs):
     model = MyPVT(
         patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
         norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
-        k=3, dist_assign=True, ada_dc=False, use_conf=False, conf_scale=0, conf_density=True,
+        k=5, dist_assign=True, ada_dc=False, use_conf=False, conf_scale=0, conf_density=True,
         **kwargs)
     model.default_cfg = _cfg()
     return model

@@ -2184,8 +2184,9 @@ def token_cluster_density_old(x, Ns, idx_agg, weight=None, return_weight=False, 
     return x_out, idx_agg
 
 
+
 def token_cluster_density_fixbug(x, Ns, idx_agg, weight=None, return_weight=False, conf=None,
-                          k=3, dist_assign=False, ada_dc=False, use_conf=False, conf_scale=0.25,
+                          k=5, dist_assign=False, ada_dc=False, use_conf=False, conf_scale=0.25,
                           conf_density=False):
     # import torch
     # x = torch.rand(2, 1000, 64)
@@ -2204,8 +2205,8 @@ def token_cluster_density_fixbug(x, Ns, idx_agg, weight=None, return_weight=Fals
         dist_matrix = torch.cdist(x, x)
         # normalize dist_matrix for stable
         dist_matrix = dist_matrix / (dist_matrix.flatten(1).max(dim=-1)[0][:, None, None] + 1e-6)
-        idx_tmp = torch.arange(N, device=x.device)
-        dist_matrix[:, idx_tmp, idx_tmp] = 0
+        # idx_tmp = torch.arange(N, device=x.device)
+        # dist_matrix[:, idx_tmp, idx_tmp] = 0
 
         # get density
         if conf_density:
@@ -2305,6 +2306,7 @@ def token_cluster_density_fixbug(x, Ns, idx_agg, weight=None, return_weight=Fals
         weight_t = index_points(norm_weight, idx_agg)
         return x_out, idx_agg, weight_t
     return x_out, idx_agg
+
 
 
 def token_cluster_density(x, Ns, idx_agg, weight=None, return_weight=False, conf=None,
