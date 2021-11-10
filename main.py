@@ -129,6 +129,7 @@ def main(options):
 
     optimizer = build_optimizer(model_without_ddp, options)
     lr_scheduler = build_scheduler(optimizer, options)
+    best_metric = 100000
     # optimizer = create_optimizer(options, model_without_ddp)
     # lr_scheduler, _ = create_scheduler(options, optimizer)
 
@@ -174,6 +175,10 @@ def main(options):
                 if utils.is_main_process():
                     summary_writer.iter_num = checkpoint['iter_num']
                 print('resume optimizer')
+
+                if 'best_metric' in checkpoint:
+                    best_metric = checkpoint['best_metric']
+
             print('resume finished.')
         else:
             print('NOTICE: ' + options.resume_from + ' not exists!')
@@ -206,6 +211,7 @@ def main(options):
                 'epoch': epoch,
                 'options': options,
                 'iter_num': summary_writer.iter_num,
+                'best_metric': best_metric
             }, checkpoint_latest, _use_new_zipfile_serialization=False)
             if options.run_smplify:
                 criterion.fits_dict.save()
@@ -221,6 +227,7 @@ def main(options):
                     'epoch': epoch,
                     'options': options,
                     'iter_num': summary_writer.iter_num,
+                    'best_metric': best_metric
                 }, checkpoint_path, _use_new_zipfile_serialization=False)
 
 
@@ -238,6 +245,22 @@ def main(options):
             for k, v in test_stats.items():
                 test_info += ' %s:%.4f' % (k, v)
             print(test_info)
+            cur_metric = test_stats['MPJPE_PA_spin']
+            if cur_metric < best_metric:
+                best_metric = cur_metric
+                if utils.is_main_process():
+                    checkpoint_best = log_dir / f'checkpoints/checkpoint_best.pth'
+                    utils.save_on_master({
+                        'model': model_without_ddp.state_dict(),
+                        'optimizer': optimizer.state_dict(),
+                        'lr_scheduler': lr_scheduler.state_dict(),
+                        'epoch': epoch,
+                        'options': options,
+                        'iter_num': summary_writer.iter_num,
+                        'best_metric': best_metric
+                    }, checkpoint_best, _use_new_zipfile_serialization=False)
+                print(f'best metric: {best_metric} at epoch {epoch}')
+
 
             if options.log_dir and utils.is_main_process():
                 with (log_dir / "log.txt").open("a") as f:
