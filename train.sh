@@ -24,6 +24,7 @@ srun -p spring_scheduler-16gv100 -w SH-IDC1-10-198-6-242\
 srun -p pat_earth -x SH-IDC1-10-198-4-[90-91,100-103,116-119] \
 srun -p mm_human \
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
+srun -p mm_human --quotatype=auto\
     --ntasks 8 --job-name=mesh --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     python -u main.py --batch_size=32 --num_workers=5 --num_epochs=70  --lr_drop=50 --summary_steps=100 \
     --model=mypvt3h2_density0_small --dataset=mix1 --head_type=hiratt_hmr \
