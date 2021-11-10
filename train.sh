@@ -28,7 +28,7 @@ srun -p mm_human --quotatype=auto\
     --ntasks 8 --job-name=mesh --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     python -u main.py --batch_size=32 --num_workers=5 --num_epochs=70  --lr_drop=50 --summary_steps=100 \
     --model=mypvt3h2_density0_small --dataset=mix1 --head_type=hiratt_hmr \
-    --opt=adamw --lr=5e-5 --wd=0.05   --img_res=224 --use_mc \
+    --opt=adamw --lr=5e-5 --wd=0.01   --img_res=224 --use_mc \
     --lam_smpl_beta=0.06 --lam_smpl_pose=60 --lam_mesh=0 --lam_key2d=300 --lam_key3d=300  \
     --name=den0f_mix1_hiratt  --pretrain_from=data/pretrained/3h2_density0_small.pth\
     --val_dataset=3dpw --resume_from=logs/den0f_mix1_hiratt/checkpoints/checkpoint_latest.pth \
