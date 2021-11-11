@@ -319,8 +319,8 @@ class MeshLoss(nn.Module):
 
         return losses, vis_data
 
-
-class MeshLoss2old(nn.Module):
+# old loss
+class MeshLoss4(nn.Module):
     def __init__(self, options, device):
         super().__init__()
         self.options = options
@@ -525,7 +525,7 @@ class MeshLoss2old(nn.Module):
             # For the data without GT 3D keypoints but with SMPL parameters, we can
             # get the GT 3D keypoints from the mesh. The confidence of the keypoints
             # is related to the confidence of the mesh.
-            gt_keypoints_3d_mesh = self.smpl.get_train_joints(gt_vertices)
+            gt_keypoints_3d_mesh = self.smpl.get_train_joints_mine(gt_vertices)
             gt_keypoints_3d_mesh = torch.cat([gt_keypoints_3d_mesh,
                                               gt_keypoints_3d_mesh.new_ones([batch_size, 24, 1])],
                                              dim=-1)
@@ -535,24 +535,20 @@ class MeshLoss2old(nn.Module):
             if ada_weight is not None:
                 weight_key[valid] = ada_weight[valid]
 
-        sampled_joints_3d = self.smpl.get_train_joints(sampled_vertices.view(bs*s, 6890, 3)).view(bs, s, -1, 3)
+        sampled_joints_3d = self.smpl.get_train_joints_mine(sampled_vertices.view(bs*s, 6890, 3)).view(bs, s, -1, 3)
         loss_keypoints_3d = self.keypoint_3d_loss(sampled_joints_3d, gt_keypoints_3d, has_pose_3d, weight_key)
         loss_keypoints_3d = loss_keypoints_3d * self.options.lam_key3d
         losses['key3D'] = loss_keypoints_3d
 
 
-        #
-        # sampled_joints_2d = \
-        #     orthographic_projection(sampled_joints_3d.view(bs*s, -1, 3),
-        #                             pred_camera.view(bs*s, -1))[:, :, :2].view(bs, s, -1, 2)
-        # loss_keypoints_2d = self.keypoint_loss(sampled_joints_2d, gt_keypoints_2d) * self.options.lam_key2d
-        # losses['key2D'] = loss_keypoints_2d
 
-
-        '''use perspective projection'''
-        sampled_joints_2d = proj_2d(sampled_joints_3d.squeeze(1), pred_camera.squeeze(1), 5000, self.options.img_res).unsqueeze(1)
+        sampled_joints_2d = \
+            orthographic_projection(sampled_joints_3d.view(bs*s, -1, 3),
+                                    pred_camera.view(bs*s, -1))[:, :, :2].view(bs, s, -1, 2)
         loss_keypoints_2d = self.keypoint_loss(sampled_joints_2d, gt_keypoints_2d) * self.options.lam_key2d
         losses['key2D'] = loss_keypoints_2d
+
+
 
         # We add the 24 joints of SMPL model for the training on SURREAL dataset.
         if self.options.use_smpl_joints:

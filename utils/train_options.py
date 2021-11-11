@@ -222,6 +222,7 @@ class DDPTrainOptions(object):
         arch.add_argument('--model', default='pvt_tiny')
         arch.add_argument('--pvt_alpha', type=float, default=1)
         arch.add_argument('--head_type', default='hmr')
+        arch.add_argument('--loss_type', default='2')
 
 
 

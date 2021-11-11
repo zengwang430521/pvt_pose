@@ -63,13 +63,13 @@ class SMPL(nn.Module):
         # This is another lsp joints regressor, we use it for training and evaluation
         self.register_buffer('lsp_regressor_eval', torch.FloatTensor(np.load(cfg.LSP_REGRESSOR_EVAL)).permute(1, 0))
 
-        # # We hope the training and evaluation regressor for the lsp joints to be consistent,
-        # # so we replace parts of the training regressor used in Graph-CMR.
-        # train_regressor = torch.cat([self.J_regressor, self.J_regressor_extra], dim=0)
-        # train_regressor = train_regressor[[cfg.JOINTS_IDX]].clone()
-        # idx = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 18]
-        # train_regressor[idx] = self.lsp_regressor_eval
-        # self.register_buffer('train_regressor', train_regressor)
+        # We hope the training and evaluation regressor for the lsp joints to be consistent,
+        # so we replace parts of the training regressor used in Graph-CMR.
+        train_regressor_mine = torch.cat([self.J_regressor, self.J_regressor_extra], dim=0)
+        train_regressor_mine = train_regressor_mine[[cfg.JOINTS_IDX]].clone()
+        idx = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 18]
+        train_regressor_mine[idx] = self.lsp_regressor_eval
+        self.register_buffer('train_regressor_mine', train_regressor_mine)
 
 
 
@@ -182,7 +182,7 @@ class SMPL(nn.Module):
         joints = torch.einsum('bik,ji->bjk', [vertices, self.J_regressor])
         return joints.contiguous()
 
-    # Get 24 training joints using the evaluation LSP joint regressor.
+    # Get 24 training joints using the evaluation LSP joint regressor, the same as cmr one
     def get_train_joints(self, vertices):
         """
         This method is used to get the training 24 joint locations from the SMPL mesh
@@ -193,6 +193,19 @@ class SMPL(nn.Module):
         """
         joints = torch.matmul(self.train_regressor[None, :], vertices)
         return joints
+
+    # Get 24 training joints using the evaluation LSP joint regressor, the same as cmr one
+    def get_train_joints_mine(self, vertices):
+        """
+        This method is used to get the training 24 joint locations from the SMPL mesh
+        Input:
+            vertices: size = (B, 6890, 3)
+        Output:
+            3D joints: size = (B, 24, 3)
+        """
+        joints = torch.matmul(self.train_regressor_mine[None, :], vertices)
+        return joints
+
 
     # Get 14 lsp joints for the evaluation.
     def get_eval_joints(self, vertices):
