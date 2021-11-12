@@ -32,6 +32,14 @@ srun -p mm_human --quotatype=auto\
     python -u main.py --batch_size=32 --num_workers=5 --num_epochs=100 --summary_steps=100 \
     --opt=adam --lr=1e-4 --lr_drop=90  --img_res=224 --use_mc \
     --model=mypvt3h2_density0_small --dataset=mix1 --head_type=hiratt_hmr \
+    --name=den0_mix1_hiratt_fine3  \
+    --val_dataset=3dpw --pretrain_from=logs/den0_mix1_hiratt/checkpoints/checkpoint0069.pth \
+    --lam_smpl_beta=0.002     --eval_freq=1 --loss_type=4 --lam_mesh=1 --lam_key3d=2 --use_smpl_joints --lam_key2d_smpl=0 --lam_key3d_smpl=1
+
+
+    python -u main.py --batch_size=32 --num_workers=5 --num_epochs=100 --summary_steps=100 \
+    --opt=adam --lr=1e-4 --lr_drop=90  --img_res=224 --use_mc \
+    --model=mypvt3h2_density0_small --dataset=mix1 --head_type=hiratt_hmr \
     --name=den0_mix1_hiratt_fine2  \
     --val_dataset=3dpw --resume_from=logs/den0_mix1_hiratt/checkpoints/checkpoint0069.pth \
     --lam_smpl_beta=0.002     --eval_freq=1 --loss_type=4 --lam_mesh=0.5 --lam_key3d=2

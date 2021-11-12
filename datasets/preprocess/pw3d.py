@@ -134,6 +134,7 @@ def pw3d_extract_train(dataset_path, out_path, split='train'):
                     poses_.append(pose)
                     shapes_.append(valid_betas[valid_i])
                     genders_.append(gender)
+                    parts_.append(part)
 
     # store data
     if not os.path.isdir(out_path):
@@ -144,11 +145,12 @@ def pw3d_extract_train(dataset_path, out_path, split='train'):
              scale=scales_,
              pose=poses_,
              shape=shapes_,
-             gender=genders_)
+             gender=genders_,
+             parts=parts_)
 
 if __name__ == '__main__':
     pw3d_extract_train(
         '/home/wzeng/mycodes/pvt_pose/data/datasets/3DPW',
         '/home/wzeng/mycodes/pvt_pose/data/datasets/npz',
-        'validation'
+        'train'
     )

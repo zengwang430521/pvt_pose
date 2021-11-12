@@ -352,19 +352,26 @@ class MeshLoss4(nn.Module):
 
     def smpl_losses(self, pred_rotmat, pred_betas, gt_pose, gt_betas, has_smpl, weight=None):
         """Compute SMPL parameter loss for the examples that SMPL annotations are available."""
-        B, S, _ = pred_betas.shape
+        B = pred_betas.shape[0]
         gt_rotmat = rodrigues(gt_pose.view(-1, 3)).view(B, 24, 3, 3)
         if weight is None:
             weight = pred_betas.new_ones(B)
         weight = weight * has_smpl
 
-        gt_rotmat = gt_rotmat.unsqueeze(1)
-        gt_betas = gt_betas.unsqueeze(1)
+        # gt_rotmat = gt_rotmat.unsqueeze(1)
+        # gt_betas = gt_betas.unsqueeze(1)
 
         loss_pose = self.criterion_regr(pred_rotmat, gt_rotmat)
-        loss_pose = (weight * loss_pose.mean(dim=[1, 2, 3, 4])).mean()
+        loss_pose = loss_pose.flatten(1).mean(dim=1)
+        loss_pose = weight * loss_pose
+        loss_pose = loss_pose.mean()
+        # loss_pose = (weight * loss_pose.mean(dim=[1, 2, 3, 4])).mean()
+
+        # loss_betas = (weight * loss_betas.mean(dim=[1, 2])).mean()
         loss_betas = self.criterion_regr(pred_betas, gt_betas)
-        loss_betas = (weight * loss_betas.mean(dim=[1, 2])).mean()
+        loss_betas = loss_betas.mean(dim=-1)
+        loss_betas = weight * loss_betas
+        loss_betas = loss_betas.mean()
         return loss_pose, loss_betas
 
     def error_adaptive_weight(self, fit_joint_error):
@@ -418,11 +425,11 @@ class MeshLoss4(nn.Module):
         gt_pelvis = (gt_keypoints_3d[:, 2, :] + gt_keypoints_3d[:, 3, :]) / 2
         gt_keypoints_3d = gt_keypoints_3d - gt_pelvis[:, None, :]
 
-        pred_pelvis = (pred_keypoints_3d[:, :, 2, :] + pred_keypoints_3d[:, :, 3, :]) / 2
-        pred_keypoints_3d = pred_keypoints_3d - pred_pelvis[:, :, None, :]
+        pred_pelvis = (pred_keypoints_3d[:, 2, :] + pred_keypoints_3d[:, 3, :]) / 2
+        pred_keypoints_3d = pred_keypoints_3d - pred_pelvis[:, None, :]
 
-        gt_keypoints_3d = gt_keypoints_3d.unsqueeze(1)
-        conf = conf.unsqueeze(1)
+        # gt_keypoints_3d = gt_keypoints_3d.unsqueeze(1)
+        # conf = conf.unsqueeze(1)
         loss = self.criterion_keypoints_3d(pred_keypoints_3d, gt_keypoints_3d)
         loss = (conf * loss).mean()
         return loss
@@ -444,30 +451,30 @@ class MeshLoss4(nn.Module):
         if weight is None:
             weight = pred_keypoints_3d.new_ones(B)
         weight = weight * has_pose_3d
-        weight = weight[:, None, None]
+        weight = weight[:, None]
         conf = conf * weight
 
         # Align the origin of the first 24 keypoints with the pelvis.
         gt_root_joint = gt_keypoints_3d[:, 0, :]
         gt_keypoints_3d = gt_keypoints_3d - gt_root_joint[:, None, :]
 
-        pred_root_joint = pred_keypoints_3d[:, :, 0, :]
-        pred_keypoints_3d = pred_keypoints_3d - pred_root_joint[:, :, None, :]
+        pred_root_joint = pred_keypoints_3d[:, 0, :]
+        pred_keypoints_3d = pred_keypoints_3d - pred_root_joint[:, None, :]
 
-        gt_keypoints_3d = gt_keypoints_3d.unsqueeze(1)
-        conf = conf.unsqueeze(1)
+        # gt_keypoints_3d = gt_keypoints_3d.unsqueeze(1)
+        # conf = conf.unsqueeze(1)
         loss = self.criterion_keypoints_3d(pred_keypoints_3d, gt_keypoints_3d)
         loss = (conf * loss).mean()
         return loss
 
     def shape_loss(self, pred_vertices, gt_vertices, has_smpl, weight=None):
         """Compute per-vertex loss on the shape for the examples that SMPL annotations are available."""
-        B, S, N, C = pred_vertices.shape
+        B = pred_vertices.shape[0]
         if weight is None:
             weight = pred_vertices.new_ones(B)
         weight = weight * has_smpl
-        weight = weight[:, None, None, None]
-        gt_vertices = gt_vertices.unsqueeze(1).expand_as(pred_vertices)
+        weight = weight[:, None, None]
+        # gt_vertices = gt_vertices.unsqueeze(1).expand_as(pred_vertices)
         loss = self.criterion_shape(pred_vertices, gt_vertices)
         loss = (loss * weight).mean()
         return loss
@@ -477,10 +484,10 @@ class MeshLoss4(nn.Module):
         dtype = torch.float32
 
         # load predicted smpl paras
-        if pred_para[-1].dim() == 2:
-            pred_para = (p.unsqueeze(1) for p in pred_para)
+        # if pred_para[-1].dim() == 2:
+        #     pred_para = (p.unsqueeze(1) for p in pred_para)
         pred_pose, pred_shape, pred_camera = pred_para
-        bs, s,  _ = pred_shape.shape
+        bs = pred_shape.shape[0]
         pred_vertices = self.apply_smpl(pred_pose, pred_shape)
 
         # Grab data from the batch
@@ -535,16 +542,14 @@ class MeshLoss4(nn.Module):
             if ada_weight is not None:
                 weight_key[valid] = ada_weight[valid]
 
-        sampled_joints_3d = self.smpl.get_train_joints_mine(sampled_vertices.view(bs*s, 6890, 3)).view(bs, s, -1, 3)
+        sampled_joints_3d = self.smpl.get_train_joints_mine(sampled_vertices)
         loss_keypoints_3d = self.keypoint_3d_loss(sampled_joints_3d, gt_keypoints_3d, has_pose_3d, weight_key)
         loss_keypoints_3d = loss_keypoints_3d * self.options.lam_key3d
         losses['key3D'] = loss_keypoints_3d
 
 
 
-        sampled_joints_2d = \
-            orthographic_projection(sampled_joints_3d.view(bs*s, -1, 3),
-                                    pred_camera.view(bs*s, -1))[:, :, :2].view(bs, s, -1, 2)
+        sampled_joints_2d = orthographic_projection(sampled_joints_3d, pred_camera)[:, :, :2]
         loss_keypoints_2d = self.keypoint_loss(sampled_joints_2d, gt_keypoints_2d) * self.options.lam_key2d
         losses['key2D'] = loss_keypoints_2d
 
