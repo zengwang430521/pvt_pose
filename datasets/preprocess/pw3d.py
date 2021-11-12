@@ -146,7 +146,7 @@ def pw3d_extract_train(dataset_path, out_path, split='train'):
              pose=poses_,
              shape=shapes_,
              gender=genders_,
-             parts=parts_)
+             part=parts_)
 
 if __name__ == '__main__':
     pw3d_extract_train(

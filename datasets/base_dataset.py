@@ -30,7 +30,7 @@ class BaseDataset(Dataset):
         self.options = options
         self.img_dir = cfg.DATASET_FOLDERS[dataset]
         self.normalize_img = Normalize(mean=cfg.IMG_NORM_MEAN, std=cfg.IMG_NORM_STD)
-        self.data = np.load(cfg.DATASET_FILES[is_train][dataset])
+        self.data = np.load(cfg.DATASET_FILES[is_train][dataset], allow_pickle=True)
         self.imgname = self.data['imgname']
 
         # Get paths to gt masks, if available
