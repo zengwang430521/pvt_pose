@@ -134,7 +134,7 @@ def pw3d_extract_train(dataset_path, out_path, split='train'):
                     poses_.append(pose)
                     shapes_.append(valid_betas[valid_i])
                     genders_.append(gender)
-                    parts_.append(part)
+                    # parts_.append(part)
 
     # store data
     if not os.path.isdir(out_path):
@@ -146,7 +146,8 @@ def pw3d_extract_train(dataset_path, out_path, split='train'):
              pose=poses_,
              shape=shapes_,
              gender=genders_,
-             part=parts_)
+             # part=parts_
+             )
 
 if __name__ == '__main__':
     pw3d_extract_train(

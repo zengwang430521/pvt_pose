@@ -473,7 +473,7 @@ class MeshLoss4(nn.Module):
         if weight is None:
             weight = pred_vertices.new_ones(B)
         weight = weight * has_smpl
-        weight = weight[:, None, None]
+        weight = weight[:, None, None].float()
         # gt_vertices = gt_vertices.unsqueeze(1).expand_as(pred_vertices)
         loss = self.criterion_shape(pred_vertices, gt_vertices)
         loss = (loss * weight).mean()
@@ -569,17 +569,15 @@ class MeshLoss4(nn.Module):
                 if ada_weight is not None:
                     weight_key_smpl[valid] = ada_weight[valid]
 
-            sampled_joints_3d_smpl = self.smpl.get_smpl_joints(sampled_vertices.view(bs*s, -1, 3)).view(bs, s, -1, 3)
+            sampled_joints_3d_smpl = self.smpl.get_smpl_joints(sampled_vertices)
             loss_keypoints_3d_smpl = self.smpl_keypoint_3d_loss(sampled_joints_3d_smpl, gt_keypoints_3d_smpl,
                                                                 has_pose_3d_smpl, weight_key_smpl)
             loss_keypoints_3d_smpl = loss_keypoints_3d_smpl * self.options.lam_key3d_smpl
             losses['key3D_smpl'] = loss_keypoints_3d_smpl
 
-            sampled_joints_2d_smpl = orthographic_projection(sampled_joints_3d_smpl.view(bs*s, -1, 3),
-                                    pred_camera.view(bs*s, -1))[:, :, :2].view(bs, s, -1, 2)
+            sampled_joints_2d_smpl = orthographic_projection(sampled_joints_3d_smpl, pred_camera)[:, :, :2]
 
-            loss_keypoints_2d_smpl = self.keypoint_loss(sampled_joints_2d_smpl,
-                                                        gt_keypoints_2d_smpl) * self.options.lam_key2d_smpl
+            loss_keypoints_2d_smpl = self.keypoint_loss(sampled_joints_2d_smpl, gt_keypoints_2d_smpl) * self.options.lam_key2d_smpl
             losses['key2D_smpl'] = loss_keypoints_2d_smpl
 
         '''SMPL paras regression loss'''
@@ -605,8 +603,8 @@ class MeshLoss4(nn.Module):
             data['pred_joint'] = sampled_joints_2d[0:vis_num, -1].detach()
             data['has_smpl'] = has_smpl[0:vis_num].detach()
             vis_data = data
-
         return losses, vis_data
+
 
 # Without data selection
 class MeshLoss2(nn.Module):

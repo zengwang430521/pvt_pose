@@ -11,7 +11,7 @@ import math
 
 
 def create_dataset(dataset, options, **kwargs):
-    len2d_eft=[1000, 14810, 9428, 28344]
+    len2d_eft = [1000, 14810, 9428, 28344]
 
     dataset_setting = {
         'all': (['h36m-train', 'lsp-orig', 'coco', 'mpii', 'up-3d'],
@@ -32,9 +32,9 @@ def create_dataset(dataset, options, **kwargs):
         'dsr': (['h36m-train', 'coco-eft', 'mpi-inf-3dhp', '3dpw-train'],
                  [.3, .4, .1, .2]),
         'mix1':(['h36m-train', 'mpi-inf-3dhp', '3dpw-train', 'lsp-orig', 'mpii-eft', 'lspet-eft', 'coco-eft'],
-                 [.3, .1, .2] + [0.4* l / sum(len2d_eft) for l in len2d_eft]),
+                 [.3, .1, .2] + [0.4 * l / sum(len2d_eft) for l in len2d_eft]),
         'mix2': (['h36m-train', 'mpi-inf-3dhp', 'lsp-orig', 'mpii-eft', 'lspet-eft', 'coco-eft'],
-                 [.3, .1] + [0.6 * l / sum(len2d_eft) for l in len2d_eft]),
+                 [.4, .2] + [0.4 * l / sum(len2d_eft) for l in len2d_eft]),
     }
 
     if dataset in dataset_setting:
