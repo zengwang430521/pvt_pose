@@ -25,11 +25,17 @@ export MASTER_PORT=29501
 srun -p 3dv-share -w SH-IDC1-10-198-6-129\
 srun -p pat_earth -x SH-IDC1-10-198-4-[90-91,100-103,116-119] \
 srun -p mm_human \
-srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
+srun -p pat_earth\
 srun -p mm_human --quotatype=auto\
     --ntasks 8 --job-name=mesh --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     \
     python -u main.py --batch_size=32 --num_workers=5 --num_epochs=100 --summary_steps=100 \
+    --opt=adam --lr=1e-4 --lr_drop=90  --img_res=224 --use_mc \
+    --model=mypvt3h2_density0_small --dataset=mix1 --head_type=hiratt_hmr \
+    --name=den0_mix1_hiratt_fine2  \
+    --val_dataset=3dpw --resume_from=logs/den0_mix1_hiratt/checkpoints/checkpoint0069.pth \
+    --lam_smpl_beta=0.002     --eval_freq=1 --loss_type=4 --lam_mesh=0.5 --lam_key3d=2
+
     --opt=adamw --lr=1e-4 --wd=0.01 --lr_drop=90  --img_res=224 --use_mc \
     --model=mypvt3h2_density0_small --dataset=mix1 --head_type=hiratt_hmr \
     --name=den0_mix1_hiratt_fine  \
