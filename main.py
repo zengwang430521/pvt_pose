@@ -126,13 +126,13 @@ def main(options):
                                    num_workers=options.num_workers,
                                    pin_memory=True)
 
-    # data_loader_val = DataLoader(dataset_val, options.batch_size, sampler=sampler_val,
-    #                              drop_last=False, num_workers=options.num_workers,
-    #                              pin_memory=True)
-
-    data_loader_val = DataLoader(dataset_val, 1, sampler=sampler_val,
+    data_loader_val = DataLoader(dataset_val, options.batch_size, sampler=sampler_val,
                                  drop_last=False, num_workers=options.num_workers,
                                  pin_memory=True)
+
+    # data_loader_val = DataLoader(dataset_val, 1, sampler=sampler_val,
+    #                              drop_last=False, num_workers=options.num_workers,
+    #                              pin_memory=True)
 
     optimizer = build_optimizer(model_without_ddp, options)
     lr_scheduler = build_scheduler(optimizer, options)
