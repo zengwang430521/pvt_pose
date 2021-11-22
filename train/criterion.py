@@ -2005,7 +2005,7 @@ class JointEvaluator(nn.Module):
 
         batch_size = pred_shape.shape[0]
         gt_vertices = pred_vertices.new_zeros([batch_size, 6890, 3])
-        if '3dpw' in self.options.val_dataset :
+        if '3dpw' in self.options.val_dataset:
             gt_pose = input_batch['pose'].to(self.device)
             gt_betas = input_batch['betas'].to(self.device)
             gender = input_batch['gender'].to(self.device)

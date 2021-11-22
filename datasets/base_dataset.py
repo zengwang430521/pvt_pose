@@ -276,7 +276,10 @@ class BaseDataset(Dataset):
         flip, pn, rot, sc = self.augm_params()
 
         # Load image
-        imgname = join(self.img_dir, str(self.imgname[index]))
+        if isinstance(self.imgname[0].item(), bytes):
+            imgname = join(self.img_dir, str(self.imgname[index].item().decode()))
+        else:
+            imgname = join(self.img_dir, str(self.imgname[index]))
 
         if self.memcached:
             self._init_memcached()

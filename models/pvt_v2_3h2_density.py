@@ -20,7 +20,7 @@ from .utils_mine import token_cluster_density_fixbug as token_cluster_density
 # from utils_mine import token2map_agg_sparse as token2map_agg_mat
 
 vis = False
-# vis = True
+vis = True
 
 
 
@@ -300,7 +300,8 @@ class DownLayer(nn.Module):
                             x, idx_agg, agg_weight, H, W, conf_source=conf)
 
         if vis:
-            show_conf_merge(conf, None, pos_orig, idx_agg)
+            # show_conf_merge(conf, None, pos_orig, idx_agg)
+            pass
         return x_down, idx_agg_down, agg_weight_down
 
 
@@ -367,7 +368,7 @@ class MyPVT(nn.Module):
         self.head_type = kwargs['head_type'] if 'head_type' in kwargs else 'hmr'
         self.head = build_smpl_head(embed_dims, self.head_type)
         self.return_list = 'att' in self.head_type
-
+        self.batch_count = 0
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
@@ -465,7 +466,7 @@ class MyPVT(nn.Module):
             outs.append((x, None, [H, W], loc_orig, idx_agg, agg_weight))
 
         if vis:
-            show_tokens_merge(img, outs, N_grid)
+            show_tokens_merge(img, outs, N_grid, self.batch_count)
 
         if self.return_list:
             return outs
