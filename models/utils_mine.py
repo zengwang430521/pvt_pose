@@ -3095,3 +3095,44 @@ def token_remerge_part(input_dict, Ns, weight=None, k=5, nh_list=[1, 1, 1, 1], n
 
     return x_out, idx_agg, agg_weight_down
 
+
+def token_cluster_grid(input_dict, Ns, conf, weight=None, k=5):
+    x = input_dict['x']
+    idx_agg = input_dict['idx_agg']
+    agg_weight = input_dict['agg_weight']
+    loc_orig = input_dict['loc_orig']
+    H, W = input_dict['map_size']
+    # idx_k_loc = input_dict['idx_k_loc']
+
+    dtype = x.dtype
+    device = x.device
+    B, N, C = x.shape
+    N0 = idx_agg.shape[1]
+    if weight is None:
+        weight = x.new_ones(B, N, 1)
+
+    w_map, _ = token2map(weight, None, loc_orig, idx_agg, [H, W], agg_weight)
+    mean_w = F.avg_pool2d(w_map, kernel_size=2)
+    mean_w = F.interpolate(mean_w, [H, W], mode='nearest')
+    norm_weight = w_map / (mean_w + 1e-6)
+    norm_weight = map2token(norm_weight, N, loc_orig, idx_agg, agg_weight)
+    weight_t = norm_weight / 4
+    weight_t = index_points(weight_t, idx_agg)
+
+
+    x_map, _ = token2map(x*norm_weight, None, loc_orig, idx_agg, [H, W], agg_weight)
+    x_map = F.avg_pool2d(x_map, kernel_size=2)
+    x_out = x_map.flatten(2).permute(0, 2, 1)
+
+    # follow token2map process
+    H, W = H // 2, W // 2
+    loc_orig = loc_orig.clamp(-1, 1)
+    loc_orig = 0.5 * (loc_orig + 1) * torch.FloatTensor([W, H]).to(device)[None, None, :] - 0.5
+    loc_orig = loc_orig.round().long()
+    loc_orig[..., 0] = loc_orig[..., 0].clamp(0, W-1)
+    loc_orig[..., 1] = loc_orig[..., 1].clamp(0, H-1)
+    idx_HW_orig = loc_orig[..., 0] + loc_orig[..., 1] * W
+    idx_agg_down = idx_HW_orig
+
+    return x_out, idx_agg_down, weight_t, None
+

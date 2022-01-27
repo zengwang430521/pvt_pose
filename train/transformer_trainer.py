@@ -67,6 +67,7 @@ from utils.vis import visualize_vert
 from models.pvt_v2 import pvt_v2_b2
 from models.pvt_v2_3h2_density import mypvt3h2_density0_small, mypvt3h2_densityc_small
 from models.tcformer import tcformer_small
+from models.tcformer_gird import tcformer_grid_small
 
 
 model_dict = {
@@ -136,6 +137,7 @@ model_dict = {
     'mypvt3h2_density0_small': mypvt3h2_density0_small,
     'mypvt3h2_densityc_small': mypvt3h2_densityc_small,
     'tcformer_small': tcformer_small,
+    'tcformer_grid_small': tcformer_grid_small
 }
 
 
