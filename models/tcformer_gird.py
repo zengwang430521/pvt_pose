@@ -12,12 +12,13 @@ from .utils_mine import (
     gumble_top_k, index_points,
     map2token_agg_fast_nearest,  # map2token_agg_mat_nearest, map2token_agg_sparse_nearest
     show_tokens_merge, show_conf_merge, merge_tokens, merge_tokens_agg_dist, token2map_agg_mat,
-    tokenconv_sparse, token_remerge_part, token_cluster_grid
+    tokenconv_sparse, token_remerge_part,
     # farthest_point_sample
 )
 
 from .utils_mine import token_cluster_density_fixbug as token_cluster_density
 # from utils_mine import token2map_agg_sparse as token2map_agg_mat
+from .tcformer_utils import token_cluster_grid
 
 vis = False
 # vis = True
@@ -300,7 +301,7 @@ class DownLayer(nn.Module):
         #     output_tokens=True, first_cluster=lv == 1,
         #     ignore_density=False)
 
-        x_down, idx_agg_down, weight_t = token_cluster_grid(
+        x_down, idx_agg_down, weight_t, _ = token_cluster_grid(
             input_dict, Ns=sample_num, conf=None, weight=weight, k=self.k)
 
         agg_weight_down = agg_weight * weight_t
@@ -382,6 +383,7 @@ class MyPVT(nn.Module):
         # classification head
         # self.head = nn.Linear(embed_dims[3], num_classes) if num_classes > 0 else nn.Identity()
         self.head_type = kwargs['head_type'] if 'head_type' in kwargs else 'hmr'
+        print(self.head_type)
         self.head = build_smpl_head(embed_dims, self.head_type)
         self.return_list = 'att' in self.head_type
         self.batch_count = 0

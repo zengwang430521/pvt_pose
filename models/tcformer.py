@@ -374,6 +374,8 @@ class MyPVT(nn.Module):
         # classification head
         # self.head = nn.Linear(embed_dims[3], num_classes) if num_classes > 0 else nn.Identity()
         self.head_type = kwargs['head_type'] if 'head_type' in kwargs else 'hmr'
+        print(self.head_type)
+
         self.head = build_smpl_head(embed_dims, self.head_type)
         self.return_list = 'att' in self.head_type
         self.batch_count = 0

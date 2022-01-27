@@ -31,6 +31,7 @@ def build_model(options):
             drop_rate=0.0,
             drop_path_rate=0.1,
             # drop_block_rate=None,
+            head_type=getattr(options, 'head_type', 'hmr')
         )
 
     else:
