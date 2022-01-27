@@ -2885,3 +2885,213 @@ def show_tokens_merge(x, out, N_grid=14*14, count=0):
 
     return
 
+
+
+
+def get_idx_agg(x_sort, Ns_p, k=5, pad_mask_sort=None, ignore_density=False):
+    C = x_sort.shape[-1]
+
+    dist_matrix = torch.cdist(x_sort, x_sort, p=2) / (C ** 0.5)
+
+    if pad_mask_sort is not None:
+        # in order to not affect cluster, masked tokens distance should be max
+        dist_matrix = dist_matrix * pad_mask_sort + dist_matrix.max() * (1 - pad_mask_sort)
+
+    # get local density
+    dist_nearest, index_nearest = torch.topk(dist_matrix, k=k, dim=-1, largest=False)
+    density = (-(dist_nearest ** 2).mean(dim=-1)).exp()
+
+    # add a small random noise for the situation where some tokens have totally the same feature
+    # (for the images with balck edges)
+    density = density + torch.rand(density.shape, device=density.device, dtype=density.dtype) * 1e-8
+
+    if pad_mask_sort is not None:
+        # masked tokens density should be 0
+        density = density * pad_mask_sort.squeeze(-1)
+
+    # get relative-separation distance
+    mask = density[:, None, :] > density[:, :, None]
+    mask = mask.type(x_sort.dtype)
+    dist, index_parent = (dist_matrix * mask +
+                          dist_matrix.flatten(1).max(dim=-1)[0][:, None, None] * (1 - mask)).min(dim=-1)
+
+    # select clustering center according to score
+    score = dist if ignore_density else dist * density
+
+    _, index_down = torch.topk(score, k=Ns_p, dim=-1)
+
+    dist_matrix = index_points(dist_matrix, index_down)
+    idx_agg_t = dist_matrix.argmin(dim=1)
+
+    # make sure selected centers merge to itself
+    B = x_sort.shape[0]
+    idx_batch = torch.arange(B, device=x_sort.device)[:, None].expand(B, Ns_p)
+    idx_tmp = torch.arange(Ns_p, device=x_sort.device)[None, :].expand(B, Ns_p)
+    idx_agg_t[idx_batch.reshape(-1), index_down.reshape(-1)] = idx_tmp.reshape(-1)
+    return idx_agg_t, density, dist, score
+
+
+def token_remerge_part(input_dict, Ns, weight=None, k=5, nh_list=[1, 1, 1, 1], nw_list=[1, 1, 1, 1],
+                       level=0, output_tokens=False, first_cluster=False, ignore_density=False):
+    # assert multiple stage seg is compatiable
+    assert len(nh_list) == len(nw_list)
+    for i in range(len(nh_list) - 1):
+        assert nh_list[i] % nh_list[i + 1] == 0 and \
+               nw_list[i] % nw_list[i + 1] == 0
+
+    nh, nw = nh_list[level], nw_list[level]
+
+    x = input_dict['x']
+    idx_agg = input_dict['idx_agg']
+    agg_weight = input_dict['agg_weight']
+    loc_orig = input_dict['loc_orig']
+    H, W = input_dict['map_size']
+    dtype = x.dtype
+    device = x.device
+    B, N, C = x.shape
+    N0 = idx_agg.shape[1]
+
+    # # only for debug
+    # print('for debug only!')
+    # if not output_tokens:
+    #     # tmp = pca_feature(x)
+    #     # tmp = token2map(tmp, None, loc_orig, idx_agg, [H, W])[0]
+    #     # plt.imshow(tmp[0].detach().cpu().float().permute(1, 2, 0))
+    #     # nh, nw = 1, 1
+    #     x = x / C
+    #     ignore_density = True
+
+    # get clustering and merge way
+    with torch.no_grad():
+        if (nh <= 1 and nw <= 1):
+            # no part seg
+            idx_agg_t, density, dist, score = get_idx_agg(x, Ns, k, pad_mask_sort=None, ignore_density=ignore_density)
+            # only for debug
+            # if not output_tokens:
+            #     print('for debug only!')
+            #     show_conf_merge(density[..., None], None, loc_orig, idx_agg, n=1, vmin=None)
+            #     show_conf_merge(dist[..., None], None, loc_orig, idx_agg, n=2, vmin=None)
+            #     show_conf_merge(score[..., None], None, loc_orig, idx_agg, n=3, vmin=None)
+            #     t=0
+
+        elif first_cluster:
+            '''we need to sort tokens in the first cluster process'''
+
+            # reshape to feature map
+            x_pad = x.reshape(B, H, W, C).permute(0, 3, 1, 2)
+
+            # pad feature map
+            pad_h = (nh - H % nh) % nh
+            pad_w = (nw - W % nw) % nw
+            x_pad = F.pad(x_pad, [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2])
+            pad_mask = x.new_ones([1, 1, H, W])
+            pad_mask = F.pad(pad_mask,
+                             [pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2],
+                             mode='constant', value=0)
+
+            # sort padded tokens
+            _, _, H_pad, W_pad = x_pad.shape
+            token_part = x.new_zeros([1, 1, H_pad, W_pad])
+            for i in range(len(nh_list)-1, level-1, -1):
+                nh_t, nw_t = nh_list[i], nw_list[i]
+                part_t = torch.arange(nh_t*nw_t, device=device, dtype=x.dtype)
+                part_t = part_t.reshape(1, 1, nh_t, nw_t)
+                part_t = F.interpolate(part_t, size=(H_pad, W_pad), mode='nearest')
+                token_part = token_part * nh_t * nw_t + part_t
+
+            token_part = token_part.reshape(H_pad * W_pad)
+            idx_sort = token_part.argsort(dim=0)
+            idx_back = idx_sort.argsort(dim=0)
+
+            x_pad = x_pad.flatten(2).permute(0, 2, 1)
+            pad_mask = pad_mask.flatten(2).permute(0, 2, 1)
+
+            x_sort = index_points(x_pad, idx_sort[None, :].expand(B, -1))
+            pad_mask_sort = index_points(pad_mask, idx_sort[None, :].expand(1, -1)).expand(B, -1, -1)
+            num_part = nh * nw
+            N_p = (H_pad // nh) * (W_pad // nw)
+            Ns_p = round(Ns / num_part)
+            Ns = Ns_p * num_part
+
+            x_sort = x_sort.reshape(B * num_part, N_p, C)
+            pad_mask_sort = pad_mask_sort.reshape(B*num_part, N_p, 1)
+
+
+
+            idx_agg_t, density, dist, score = get_idx_agg(x_sort, Ns_p, k, pad_mask_sort, ignore_density=ignore_density)
+
+            # # only for debug
+            # if not output_tokens:
+            #     print('for debug only!')
+            #     show_conf_merge(index_points(density.reshape(B, num_part * N_p, 1), idx_back[None, :].expand(B, -1)), None, loc_orig, idx_agg, n=1, vmin=None)
+            #     show_conf_merge(index_points(dist.reshape(B, num_part * N_p, 1), idx_back[None, :].expand(B, -1)), None, loc_orig, idx_agg, n=2, vmin=None)
+            #     show_conf_merge(index_points(score.reshape(B, num_part * N_p, 1), idx_back[None, :].expand(B, -1)), None, loc_orig, idx_agg, n=3, vmin=None)
+            #
+
+
+            # tansfer index_down and idx_agg_t to the original sort
+            idx_agg_t = idx_agg_t.reshape(B, num_part, N_p) + torch.arange(num_part, device=device)[None, :, None] * Ns_p
+            idx_agg_t = idx_agg_t.reshape(B, num_part * N_p)
+            idx_agg_t = index_points(idx_agg_t[:, :, None], idx_back[None, :].expand(B, -1)).squeeze(-1)
+
+            # remve padded tokens
+            idx_agg_t = idx_agg_t.reshape(B, H_pad, W_pad)
+            idx_agg_t = idx_agg_t[:, pad_h // 2:pad_h // 2 + H, pad_w // 2:pad_w // 2 + W].contiguous()
+            idx_agg_t = idx_agg_t.reshape(B, N)
+
+        else:
+
+            # can be equally splited
+            num_part = nh * nw
+            N_p = N // num_part
+            assert N % num_part == 0
+            Ns_p = round(Ns // num_part)
+            Ns = Ns_p * num_part
+
+            x_sort = x
+            x_sort = x_sort.reshape(B * num_part, N_p, C)
+
+            idx_agg_t, density, dist, score = get_idx_agg(x_sort, Ns_p, k, pad_mask_sort=None, ignore_density=ignore_density)
+
+            # # only for debug
+            # if not output_tokens:
+            #     print('for debug only!')
+            #     show_conf_merge(density.reshape(B, num_part * N_p, 1), None, loc_orig, idx_agg, n=1, vmin=None)
+            #     show_conf_merge(dist.reshape(B, num_part * N_p, 1), None, loc_orig, idx_agg, n=2, vmin=None)
+            #     show_conf_merge(score.reshape(B, num_part * N_p, 1), None, loc_orig, idx_agg, n=3, vmin=None)
+
+
+
+            # tansfer index_down and idx_agg_t to the original sort
+            idx_agg_t = idx_agg_t.reshape(B, num_part, N_p) + torch.arange(num_part, device=device)[None, :,
+                                                              None] * Ns_p
+            idx_agg_t = idx_agg_t.reshape(B, num_part * N_p)
+
+    # merge tokens
+    if weight is None:
+        weight = x.new_ones(B, N, 1)
+
+    idx = idx_agg_t + torch.arange(B, device=x.device)[:, None] * Ns
+
+    all_weight = weight.new_zeros(B * Ns, 1)
+    all_weight.index_add_(dim=0, index=idx.reshape(B * N), source=weight.reshape(B * N, 1))
+    all_weight = all_weight + 1e-6
+    norm_weight = weight / all_weight[idx]
+
+    if output_tokens:
+        # average token features
+        x_out = x.new_zeros(B * Ns, C)
+        source = x * norm_weight
+        x_out.index_add_(dim=0, index=idx.reshape(B * N), source=source.reshape(B * N, C).type(x.dtype))
+        x_out = x_out.reshape(B, Ns, C)
+    else:
+        x_out = x.new_zeros(B, Ns, C)   # empty tokens
+
+    idx_agg = index_points(idx_agg_t[..., None], idx_agg).squeeze(-1)
+    weight_t = index_points(norm_weight, idx_agg)
+
+    agg_weight_down = agg_weight * weight_t
+    agg_weight_down = agg_weight_down / agg_weight_down.max(dim=1, keepdim=True)[0]
+
+    return x_out, idx_agg, agg_weight_down
+

@@ -25,6 +25,14 @@ def build_model(options):
                 head_type=getattr(options, 'head_type', 'hmr')
             )
 
+    elif 'tcformer' in options.model:
+        model = model_class(
+            pretrained=False,
+            drop_rate=0.0,
+            drop_path_rate=0.1,
+            # drop_block_rate=None,
+        )
+
     else:
         model = model_class(options)
     return model

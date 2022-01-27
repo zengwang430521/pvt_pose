@@ -31,6 +31,16 @@ srun -p pat_earth \
     \
     python -u main.py --batch_size=64 --num_workers=5 --num_epochs=100 --summary_steps=100 \
     --opt=adamw --lr=1e-4 --wd=0.01 --lr_drop=70  --img_res=224 --use_mc \
+    --model=tcformer_small  --head_type=hiratt_hmr \
+    --dataset=mix1 --name=rebuttal_tcformer  --resume_from=logs/rebuttal_tcformer/checkpoints/checkpoint_latest.pth\
+    --val_dataset=3dpw  --pretrain_from=data/pretrained/3h2_density0_small.pth\
+    --lam_smpl_beta=0.002  --eval_freq=1 --loss_type=4
+
+
+
+
+    python -u main.py --batch_size=64 --num_workers=5 --num_epochs=100 --summary_steps=100 \
+    --opt=adamw --lr=1e-4 --wd=0.01 --lr_drop=70  --img_res=224 --use_mc \
     --model=mypvt3h2_density0_small  --head_type=hiratt_hmr \
     --dataset=mix1 --name=mix1_1  --resume_from=logs/mix1_1/checkpoints/checkpoint_latest.pth\
     --val_dataset=3dpw  --pretrain_from=data/pretrained/3h2_density0_small.pth\
