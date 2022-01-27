@@ -2,10 +2,10 @@ import torch
 import torch.nn.functional as F
 import math
 import matplotlib.pyplot as plt
-try:
-    from torch_cluster import fps
-except (ImportError, ModuleNotFoundError):
-    print('no torch cluster')
+# try:
+#     from torch_cluster import fps
+# except (ImportError, ModuleNotFoundError):
+#     print('no torch cluster')
 
 
 def get_grid_loc(B, H, W, device):
