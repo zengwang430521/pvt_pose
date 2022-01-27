@@ -2212,7 +2212,8 @@ def token_cluster_density_fixbug(x, Ns, idx_agg, weight=None, return_weight=Fals
         if conf_density:
             density = conf.exp()
         else:
-            dist_nearest, index_nearest = torch.topk(dist_matrix, k=k, dim=-1)
+            # dist_nearest, index_nearest = torch.topk(dist_matrix, k=k, dim=-1)
+            dist_nearest, index_nearest = torch.topk(dist_matrix, k=k, dim=-1, largest=False)
             if ada_dc:
                 '''
                 Adaptive density peak clustering based on K-nearest neighbors with aggregating strategy

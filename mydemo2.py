@@ -121,9 +121,14 @@ if __name__ == '__main__':
 
     evaluator.smpl = evaluator.male_smpl
     # for idx in [4660, 4670, 4880, 5220, 6950, 10390, 10570, 10850, 17170]:
-    for idx in [53, 63, 66, 71, 77, 102, 128, 137, 140, 183, 214, 217, 218, 219, 243, 254]:
+    # for idx in [53, 63, 66, 71, 77, 102, 128, 137, 140, 183, 214, 217, 218, 219, 243, 254]:     # lsp
+    for idx in tqdm(range(0, len(dataset_val), 10)):
         data_batch = dataset_val[idx]
         img = data_batch['img'].unsqueeze(0).to(device)
+
+        if not no_black_edge(img):
+            continue
+
         with torch.no_grad():
             pred_para = model(img)
             pred_vertices = evaluator.apply_smpl(pred_para[0], pred_para[1])

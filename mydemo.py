@@ -181,6 +181,7 @@ if __name__ == '__main__':
             outfile = f'vis/{idx}'
 
             # Save reconstructions
+            cv2.imwrite(outfile + '_input.png', 255 * img[:, :, ::-1])
             cv2.imwrite(outfile + '_render.png', 255 * img_render[:, :, ::-1])
             cv2.imwrite(outfile + '_render_side.png', 255 * img_render_side[:, :, ::-1])
 
