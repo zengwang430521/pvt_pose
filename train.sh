@@ -26,8 +26,8 @@ srun -p 3dv-share -w SH-IDC1-10-198-6-129\
 srun -p pat_earth -x SH-IDC1-10-198-4-[90-91,100-103,116-119] \
 srun -p mm_human \
 srun -p mm_human --quotatype=auto\
-srun -p pat_earth \
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
+srun -p pat_earth \
     --ntasks 8 --job-name=mesh --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
     \
     python -u main.py --batch_size=64 --num_workers=5 --num_epochs=100 --summary_steps=100 \

@@ -478,6 +478,7 @@ class MyPVT(nn.Module):
 
         if vis:
             show_tokens_merge(img, outs, N_grid, self.batch_count)
+            self.batch_count += 1
 
         if self.return_list:
             return outs

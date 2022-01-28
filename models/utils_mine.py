@@ -2903,7 +2903,7 @@ def get_idx_agg(x_sort, Ns_p, k=5, pad_mask_sort=None, ignore_density=False):
 
     # add a small random noise for the situation where some tokens have totally the same feature
     # (for the images with balck edges)
-    density = density + torch.rand(density.shape, device=density.device, dtype=density.dtype) * 1e-8
+    density = density + torch.rand(density.shape, device=density.device, dtype=density.dtype) * 1e-6
 
     if pad_mask_sort is not None:
         # masked tokens density should be 0
