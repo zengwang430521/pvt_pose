@@ -686,7 +686,7 @@ class HirAttNeck2(nn.Module):
             x = (attn @ v).transpose(1, 2).reshape(B, 1, C)
             x = self.linears[i](x)
             out = out + x
-            out = self.mlps[i](out)
+            out = out + self.mlps[i](out)
             query = out
         return out.squeeze(1)
 
@@ -702,6 +702,33 @@ class HirAttHead2(HMRHead):
         return out
 
 
+from .tc_module.mta_head import MTA
+
+
+
+
+class MTAHead(HMRHead):
+    def __init__(self, in_channels, smpl_mean_params=cfg.SMPL_MEAN_PARAMS, n_iter=3):
+        super().__init__(256, smpl_mean_params, n_iter)
+        self.neck = MTA(in_channels, out_channels=256)
+
+    def tuple2dict(self, input):
+        out = {
+            'x': input[0],
+            'map_size': input[2],
+            'loc_orig': input[3],
+            'idx_agg': input[4],
+            'agg_weight': input[5]
+        }
+        return out
+
+    def forward(self, x):
+        x = [self.tuple2dict(tmp) for tmp in x]
+        x = self.neck(x)
+        x = x[0].mean(dim=-1).mean(dim=-1)
+        out = super().forward(x)
+        return out
+
 
 head_dict = {
     'hmr': HMRHead,
@@ -709,7 +736,9 @@ head_dict = {
     'tcmr': TCMRHead,
     'hiratt_hmr': HirAttHead,
     'hiratt_hmr2': HirAttHead2,
-    'att_hmr': AttHead
+    'att_hmr': AttHead,
+    'mta_hmr': MTAHead
+
 }
 
 
