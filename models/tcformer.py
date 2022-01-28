@@ -477,7 +477,8 @@ class MyPVT(nn.Module):
             outs.append((x, None, [H, W], loc_orig, idx_agg, agg_weight))
 
         if vis:
-            show_tokens_merge(img, outs, N_grid, self.batch_count)
+            if self.batch_count % 1 == 0:
+                show_tokens_merge(img, outs, N_grid, self.batch_count)
             self.batch_count += 1
 
         if self.return_list:

@@ -96,6 +96,16 @@ def main(options):
     model.to(device)
     evaluator = JointEvaluator(options, device)
 
+    # # get params
+    # import torch.nn as nn
+    # from mmcv.cnn.utils.flops_counter import get_model_complexity_info
+    # model.eval()
+    # flops, params = get_model_complexity_info(model, (3, 224, 224), as_strings=False)
+    # print(flops)
+    # print(params)
+
+
+
     model_without_ddp = model
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print('number of params:', n_parameters)

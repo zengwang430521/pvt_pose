@@ -2787,19 +2787,20 @@ def show_tokens_merge(x, out, N_grid=14*14, count=0):
     h, w = h // 4, w//4
     device = x.device
     color_map = F.avg_pool2d(x, kernel_size=4)
+    l, c = 2, 3
 
 
     N0 = h*w
 
     for i in range(1):
         img = x[i].permute(1, 2, 0).detach().cpu()
-        ax = plt.subplot(1, 6, 1)
+        ax = plt.subplot(l, c, 1)
         ax.clear()
         ax.imshow(img)
 
-        fname = f'vis/{count}_img.png'
-        import cv2
-        cv2.imwrite(fname, img.numpy()[:, :, ::-1] * 255)
+        # fname = f'vis/{count}_img.png'
+        # import cv2
+        # cv2.imwrite(fname, img.numpy()[:, :, ::-1] * 255)
 
         lv = 3
         loc_orig = out[lv][3]
@@ -2813,7 +2814,7 @@ def show_tokens_merge(x, out, N_grid=14*14, count=0):
         idx_map, _ = token2map_agg_mat(tmp, loc_orig, loc_orig, idx_agg, [H // 4, W // 4])
         idx_map = F.interpolate(idx_map, [H, W], mode='nearest')
         # idx_map = idx_map[0].permute(1, 2, 0).detach().cpu().float()
-        ax = plt.subplot(1, 6, 6)
+        ax = plt.subplot(l, c, 6)
         ax.imshow(idx_map[0].permute(1, 2, 0).detach().cpu().float())
 
         for lv in range(len(out)):
@@ -2864,15 +2865,15 @@ def show_tokens_merge(x, out, N_grid=14*14, count=0):
             # import cv2
             # cv2.imwrite(fname, idx_map_grid[0].permute(1, 2, 0).detach().cpu().float().numpy()[:, :, ::-1] * 255)
 
-            ax = plt.subplot(1, 6, lv+2)
+            ax = plt.subplot(l, c, lv+2)
             ax.clear()
             ax.imshow(idx_map_our[0].permute(1, 2, 0).detach().cpu().float())
 
-            import cv2
-            fname = f'vis/{count}_{lv}.png'
-            cv2.imwrite(fname, idx_map_our[0].permute(1, 2, 0).detach().cpu().float().numpy()[:, :, ::-1]*255)
-            fname = f'vis/{count}_{lv}_grid.png'
-            cv2.imwrite(fname, idx_map_grid[0].permute(1, 2,0).detach().cpu().float().numpy()[:, :, ::-1] * 255)
+            # import cv2
+            # fname = f'vis/{count}_{lv}.png'
+            # cv2.imwrite(fname, idx_map_our[0].permute(1, 2, 0).detach().cpu().float().numpy()[:, :, ::-1]*255)
+            # fname = f'vis/{count}_{lv}_grid.png'
+            # cv2.imwrite(fname, idx_map_grid[0].permute(1, 2,0).detach().cpu().float().numpy()[:, :, ::-1] * 255)
 
 
 
@@ -2880,7 +2881,7 @@ def show_tokens_merge(x, out, N_grid=14*14, count=0):
 
     # plt.show()
     fname = f'vis/{count}.jpg'
-    plt.savefig(fname, dpi=200)
+    plt.savefig(fname, dpi=600)
 
 
     return
@@ -2904,6 +2905,7 @@ def get_idx_agg(x_sort, Ns_p, k=5, pad_mask_sort=None, ignore_density=False):
     # add a small random noise for the situation where some tokens have totally the same feature
     # (for the images with balck edges)
     density = density + torch.rand(density.shape, device=density.device, dtype=density.dtype) * 1e-6
+    # density = density + torch.rand(density.shape, device=density.device, dtype=density.dtype) * 1e-7
 
     if pad_mask_sort is not None:
         # masked tokens density should be 0
