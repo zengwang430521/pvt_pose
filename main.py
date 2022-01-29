@@ -17,7 +17,7 @@ import utils.samplers as samplers
 from torch.utils.data import DataLoader
 from train.train_one_epoch import train_one_epoch, evaluate
 from pathlib import Path
-from train.criterion import MeshLoss2, JointEvaluator, MeshLoss3, MeshLoss4, MeshLoss5, MeshLoss6
+from train.criterion import MeshLoss2, JointEvaluator, MeshLoss3, MeshLoss4, MeshLoss5, MeshLoss6, MeshLoss7
 from models.TMR import build_model
 from datasets.datasets import create_dataset, create_val_dataset
 from utils.train_options import DDPTrainOptions
@@ -126,6 +126,8 @@ def main(options):
             criterion = MeshLoss5(options, device)
         elif options.loss_type == '6':
             criterion = MeshLoss6(options, device)
+        elif options.loss_type == '7':
+            criterion = MeshLoss7(options, device)
         else:
             print('wrong loss')
             exit()
