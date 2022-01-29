@@ -32,19 +32,36 @@ srun -p pat_earth \
     \
     python -u main.py --batch_size=64 --num_workers=5 --num_epochs=100 --summary_steps=100 \
     --opt=adamw --lr=1e-4 --wd=0.01 --lr_drop=70  --img_res=224 --use_mc \
-    --model=tcformer_small  --head_type=hiratt_hmr --dataset=mix1\
-    --name=tcformer_loss5 --log_dir='./logs/rebuttal' \
-    --resume_from=logs/rebuttal/tcformer_loss5/checkpoints/checkpoint_latest.pth\
+    --model=tcformer_small  --head_type=hmr --dataset=mix1 \
+     --name=tcformer_wo_att_loss7_fine --log_dir='./logs/rebuttal' \
+    --resume_from=logs/rebuttal/tcformer_wo_att_loss5/checkpoints/checkpoint_best.pth \
+    --val_dataset=3dpw  --pretrain_from=data/pretrained/3h2_density0_small.pth\
+    --lam_smpl_beta=0.002  --eval_freq=1 --loss_type=7
+
+
+    python -u main.py --batch_size=64 --num_workers=5 --num_epochs=100 --summary_steps=100 \
+    --opt=adamw --lr=1e-4 --wd=0.01 --lr_drop=70  --img_res=224 --use_mc \
+    --model=tcformer_small  --head_type=hmr --dataset=mix1 \
+     --name=tcformer_wo_att_loss5_fine --log_dir='./logs/rebuttal' \
+    --resume_from=logs/rebuttal/tcformer_wo_att/checkpoints/checkpoint_best.pth \
     --val_dataset=3dpw  --pretrain_from=data/pretrained/3h2_density0_small.pth\
     --lam_smpl_beta=0.002  --eval_freq=1 --loss_type=5
 
 
-
-        python -u main.py --batch_size=64 --num_workers=5 --num_epochs=100 --summary_steps=100 \
+    python -u main.py --batch_size=64 --num_workers=5 --num_epochs=100 --summary_steps=100 \
     --opt=adamw --lr=1e-4 --wd=0.01 --lr_drop=70  --img_res=224 --use_mc \
     --model=tcformer_small  --head_type=hmr --dataset=mix1 \
      --name=tcformer_wo_att_loss5 --log_dir='./logs/rebuttal' \
     --resume_from=logs/rebuttal/tcformer_wo_att_loss5/checkpoints/checkpoint_latest.pth \
+    --val_dataset=3dpw  --pretrain_from=data/pretrained/3h2_density0_small.pth\
+    --lam_smpl_beta=0.002  --eval_freq=1 --loss_type=5
+
+
+    python -u main.py --batch_size=64 --num_workers=5 --num_epochs=100 --summary_steps=100 \
+    --opt=adamw --lr=1e-4 --wd=0.01 --lr_drop=70  --img_res=224 --use_mc \
+    --model=tcformer_small  --head_type=hiratt_hmr --dataset=mix1\
+    --name=tcformer_loss5 --log_dir='./logs/rebuttal' \
+    --resume_from=logs/rebuttal/tcformer_loss5/checkpoints/checkpoint_latest.pth\
     --val_dataset=3dpw  --pretrain_from=data/pretrained/3h2_density0_small.pth\
     --lam_smpl_beta=0.002  --eval_freq=1 --loss_type=5
 
@@ -85,8 +102,8 @@ srun -p pat_earth \
     python -u main.py --batch_size=64 --num_workers=5 --num_epochs=100 --summary_steps=100 \
     --opt=adamw --lr=1e-4 --wd=0.01 --lr_drop=70  --img_res=224 --use_mc \
     --model=tcformer_small  --head_type=hmr --dataset=mix1\
-     --name=tcformer_wo_ctm --log_dir='./logs/rebuttal' \
-     --resume_from=logs/rebuttal/tcformer/checkpoints/checkpoint_latest.pth\
+     --name=tcformer_wo_att --log_dir='./logs/rebuttal' \
+     --resume_from=logs/rebuttal/tcformer_wo_att/checkpoints/checkpoint_latest.pth\
     --val_dataset=3dpw  --pretrain_from=data/pretrained/3h2_density0_small.pth\
     --lam_smpl_beta=0.002  --eval_freq=1 --loss_type=4
 
