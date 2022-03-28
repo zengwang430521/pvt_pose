@@ -1,7 +1,7 @@
 import sys
 sys.path.insert(0, 'index_process')
 import torch
-from torch_sparse import spmm, coalesce
+# from torch_sparse import spmm, coalesce
 from mmcv.utils import get_logger
 from mmcv.runner import _load_checkpoint, load_state_dict
 import logging
