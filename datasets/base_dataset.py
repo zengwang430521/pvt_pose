@@ -284,12 +284,15 @@ class BaseDataset(Dataset):
         if self.memcached:
             self._init_memcached()
             img = self.mc_loader(imgname)
+            if img is None:
+                print(imgname)
             img = img.convert('RGB')
             img = np.array(img).astype(np.float32)
         else:
             # cv2 defaults to BGR order, but we use RGB order
             img = cv2.imread(imgname)[:, :, ::-1].copy().astype(np.float32)
-
+            if img is None:
+                print(imgname)
         try:
             orig_shape = np.array(img.shape)[:2]
         except TypeError:
