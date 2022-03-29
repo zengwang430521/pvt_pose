@@ -11,7 +11,7 @@ try:
 except:
     print('index attention is not supported')
 from mmcv.cnn import build_activation_layer, build_conv_layer, build_norm_layer
-from mmcv.cnn.bricks.transformer import build_dropout
+# from mmcv.cnn.bricks.transformer import build_dropout
 
 
 # Mlp with dwconv
