@@ -249,6 +249,7 @@ class MTA(BaseModule):
 
     def forward(self, inputs):
         """Forward function."""
+        print(len(inputs))
         if len(inputs) != len(self.in_channels):
             print(len(inputs))
         assert len(inputs) == len(self.in_channels)
