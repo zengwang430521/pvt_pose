@@ -378,6 +378,8 @@ class MyPVT(nn.Module):
 
         self.head = build_smpl_head(embed_dims, self.head_type)
         self.return_list = 'att' in self.head_type or 'mta' in self.head_type
+        print('return_list: ')
+        print(self.return_list)
         self.batch_count = 0
         self.apply(self._init_weights)
 
