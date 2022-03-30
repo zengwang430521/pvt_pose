@@ -18,6 +18,8 @@ spring.submit arun -p spring_scheduler --gres=gpu:7 --ntasks-per-node=7 --cpus-p
 export MASTER_PORT=29501
 
     --ntasks 4 --job-name=mesh --gres=gpu:4 --ntasks-per-node=4 --cpus-per-task=5 --kill-on-bad-exit=1 \
+    --ntasks 1 --job-name=mesh --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=5 --kill-on-bad-exit=1 \
+    --ntasks 8 --job-name=mesh --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
 
 
 
@@ -28,7 +30,7 @@ srun -p mm_human \
 srun -p pat_earth -x SH-IDC1-10-198-4-[100-103,116-119] \
 srun -p mm_human --quotatype=auto\
 srun -p pat_earth \
-    --ntasks 8 --job-name=mesh --gres=gpu:8 --ntasks-per-node=8 --cpus-per-task=5 --kill-on-bad-exit=1 \
+    --ntasks 1 --job-name=mesh --gres=gpu:1 --ntasks-per-node=1 --cpus-per-task=5 --kill-on-bad-exit=1 \
     \
     python -u main.py --batch_size=32 --num_workers=5 --num_epochs=60 --summary_steps=100 \
     --opt=adamw --lr=1e-4 --wd=0.01 --lr_drop=50  --img_res=224 --use_mc \

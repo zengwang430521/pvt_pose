@@ -250,6 +250,8 @@ class MTA(BaseModule):
     def forward(self, inputs):
         """Forward function."""
         assert len(inputs) == len(self.in_channels)
+        if len(inputs) != len(self.in_channels):
+            print(len(inputs))
 
         # build lateral tokens
         input_dicts = []
